@@ -1,0 +1,53 @@
+stages:
+  - notify
+  - deploy
+
+telegram_reminder:
+  stage: notify
+  image: python:3.12-alpine
+  script:
+    - |
+      python - <<'PY'
+      import json
+      import os
+      import urllib.request
+
+      token = os.environ["TELEGRAM_BOT_TOKEN"]
+      chat_id = os.environ["TELEGRAM_CHAT_ID"]
+      text = os.environ.get(
+          "TELEGRAM_REMINDER_TEXT",
+          "Перевір, чи закрив всі завдання на сьогодні",
+      )
+
+      payload = json.dumps({"chat_id": chat_id, "text": text}).encode()
+      request = urllib.request.Request(
+          f"https://api.telegram.org/bot{token}/sendMessage",
+          data=payload,
+          headers={"Content-Type": "application/json"},
+          method="POST",
+      )
+
+      with urllib.request.urlopen(request, timeout=20) as response:
+          print(response.read().decode())
+      PY
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: manual
+
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - mkdir -p public
+    - cp index.html public/
+    - cp styles.css public/
+    - cp app.js public/
+    - cp service-worker.js public/
+    - cp manifest.json public/
+    - cp supabase-config.js public/
+    - cp -R assets public/assets
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
