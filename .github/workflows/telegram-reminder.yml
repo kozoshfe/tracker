@@ -32,6 +32,16 @@ jobs:
           from datetime import datetime
           from zoneinfo import ZoneInfo
 
+          weekdays = {
+              0: "Понеділок",
+              1: "Вівторок",
+              2: "Середа",
+              3: "Четвер",
+              4: "П'ятниця",
+              5: "Субота",
+              6: "Неділя",
+          }
+
           token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
           text = os.environ.get("TELEGRAM_REMINDER_TEXT", "").strip()
@@ -48,9 +58,10 @@ jobs:
           if not text:
               text = "Перевір, чи закрив всі завдання на сьогодні"
 
+          message = f"Сьогодні: {weekdays[now.weekday()]}\n\n{text}"
           payload = json.dumps({
               "chat_id": chat_id,
-              "text": f"{text}\n{now:%Y-%m-%d} · {now:%H:%M}",
+              "text": message,
           }).encode()
 
           request = urllib.request.Request(
