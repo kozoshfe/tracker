@@ -21,6 +21,14 @@ TELEGRAM_REMINDER_TEXT=Перевір, чи закрив всі завдання
 
 If it is missing, the workflow uses the default reminder text.
 
+The message format is:
+
+```text
+Сьогодні: Середа
+
+Перевір, чи закрив всі завдання на сьогодні
+```
+
 ## 3. Push the workflow
 
 The Telegram workflow is defined here:
