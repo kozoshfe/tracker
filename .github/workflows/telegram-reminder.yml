@@ -1,0 +1,65 @@
+name: Telegram reminder
+
+on:
+  schedule:
+    # GitHub cron uses UTC. These two runs cover 23:00 in Europe/Kyiv
+    # during both winter time (UTC+2) and summer time (UTC+3).
+    - cron: "0 20 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Send immediately"
+        required: false
+        default: "true"
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram reminder
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_REMINDER_TEXT: ${{ vars.TELEGRAM_REMINDER_TEXT }}
+          FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && inputs.force == 'true' }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+          text = os.environ.get("TELEGRAM_REMINDER_TEXT", "").strip()
+          force_send = os.environ.get("FORCE_SEND") == "true"
+
+          if not token or not chat_id:
+              sys.exit("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret.")
+
+          now = datetime.now(ZoneInfo("Europe/Kyiv"))
+          if not force_send and now.hour != 23:
+              print(f"Skipped: Europe/Kyiv time is {now:%H:%M}, not 23:00.")
+              sys.exit(0)
+
+          if not text:
+              text = "Перевір, чи закрив всі завдання на сьогодні"
+
+          payload = json.dumps({
+              "chat_id": chat_id,
+              "text": f"{text}\n{now:%Y-%m-%d} · {now:%H:%M}",
+          }).encode()
+
+          request = urllib.request.Request(
+              f"https://api.telegram.org/bot{token}/sendMessage",
+              data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          with urllib.request.urlopen(request, timeout=20) as response:
+              print(response.read().decode())
+          PY
