@@ -2,10 +2,10 @@ name: Telegram reminder
 
 on:
   schedule:
-    # GitHub cron uses UTC. These two runs cover 23:00 in Europe/Kyiv
-    # during both winter time (UTC+2) and summer time (UTC+3).
-    - cron: "0 20 * * *"
-    - cron: "0 21 * * *"
+    # GitHub cron uses UTC and can delay jobs that start at minute 0.
+    # These two runs cover 23:17 in Europe/Kyiv during summer/winter time.
+    - cron: "17 20 * * *"
+    - cron: "17 21 * * *"
   workflow_dispatch:
     inputs:
       force:
