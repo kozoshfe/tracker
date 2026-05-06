@@ -3,9 +3,10 @@ name: Telegram reminder
 on:
   schedule:
     # GitHub cron uses UTC and can delay jobs that start at minute 0.
-    # These two runs cover 23:17 in Europe/Kyiv during summer/winter time.
-    - cron: "17 20 * * *"
-    - cron: "17 21 * * *"
+    # These two non-zero-minute runs cover 23:14 in Europe/Kyiv during
+    # summer time (UTC+3) and winter time (UTC+2).
+    - cron: "14 20 * * *"
+    - cron: "14 21 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -23,6 +24,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_REMINDER_TEXT: ${{ vars.TELEGRAM_REMINDER_TEXT }}
           FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && inputs.force == 'true' }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           python3 - <<'PY'
           import json
@@ -46,13 +49,33 @@ jobs:
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
           text = os.environ.get("TELEGRAM_REMINDER_TEXT", "").strip()
           force_send = os.environ.get("FORCE_SEND") == "true"
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+          event_schedule = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
 
           if not token or not chat_id:
               sys.exit("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret.")
 
           now = datetime.now(ZoneInfo("Europe/Kyiv"))
+          print(f"Event: {event_name}")
+          print(f"Cron schedule: {event_schedule or 'manual'}")
+          print(f"Europe/Kyiv time: {now:%Y-%m-%d %H:%M:%S %Z}")
+
+          summary_lines = [
+              "## Telegram reminder",
+              "",
+              f"- Event: `{event_name}`",
+              f"- Schedule: `{event_schedule or 'manual'}`",
+              f"- Europe/Kyiv time: `{now:%Y-%m-%d %H:%M:%S %Z}`",
+          ]
+
           if not force_send and now.hour != 23:
-              print(f"Skipped: Europe/Kyiv time is {now:%H:%M}, not 23:00.")
+              reason = f"Skipped: Europe/Kyiv time is {now:%H:%M}, not in the 23:00 hour."
+              print(reason)
+              summary_lines.append(f"- Result: `{reason}`")
+              summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+              if summary_path:
+                  with open(summary_path, "a", encoding="utf-8") as summary:
+                      summary.write("\n".join(summary_lines) + "\n")
               sys.exit(0)
 
           if not text:
@@ -72,5 +95,12 @@ jobs:
           )
 
           with urllib.request.urlopen(request, timeout=20) as response:
-              print(response.read().decode())
+              body = response.read().decode()
+              print(body)
+
+          summary_lines.append("- Result: `sent`")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as summary:
+                  summary.write("\n".join(summary_lines) + "\n")
           PY
