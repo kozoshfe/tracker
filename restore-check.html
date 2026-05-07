@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Перевірка відновлення</title>
+  </head>
+  <body>
+    <pre id="status"></pre>
+    <script>
+      const state = JSON.parse(localStorage.getItem('goals-pwa-state') || '{}');
+      const counts = (state.items || []).reduce((acc, item) => {
+        acc[item.type] = (acc[item.type] || 0) + 1;
+        return acc;
+      }, {});
+      document.getElementById('status').textContent = JSON.stringify({
+        items: (state.items || []).length,
+        counts,
+        boardItems: (state.boardItems || []).length,
+        readTabs: Object.keys(state.readStatuses || {}),
+        updatedAt: state.updatedAt,
+      }, null, 2);
+    </script>
+  </body>
+</html>
