@@ -116,6 +116,12 @@ jobs:
               print(result)
               sys.exit(exit_code)
 
+          def mask_value(value):
+              value = str(value or "")
+              if len(value) <= 4:
+                  return "****"
+              return f"{value[:2]}...{value[-2:]}"
+
           def telegram_request(method, payload=None):
               data = None if payload is None else json.dumps(payload).encode("utf-8")
               request = urllib.request.Request(
@@ -162,6 +168,7 @@ jobs:
           status, send_result = telegram_request("sendMessage", {
               "chat_id": chat_id,
               "text": message,
+              "disable_notification": False,
               "disable_web_page_preview": True,
           })
 
@@ -170,6 +177,12 @@ jobs:
           if status != 200 or not send_result.get("ok"):
               summary_lines.append(f"- Telegram sendMessage response: `{json.dumps(send_result, ensure_ascii=False)}`")
               finish("failed: Telegram did not accept the message", 1)
+
+          sent_message = send_result.get("result", {})
+          sent_chat = sent_message.get("chat", {})
+          summary_lines.append(f"- Telegram message id: `{sent_message.get('message_id', 'unknown')}`")
+          summary_lines.append(f"- Telegram chat id: `{mask_value(sent_chat.get('id', chat_id))}`")
+          summary_lines.append(f"- Telegram chat type: `{sent_chat.get('type', 'unknown')}`")
 
           marker_path = ".telegram-reminder-test-sent" if is_test_schedule else ".telegram-reminder-sent"
           with open(marker_path, "w", encoding="utf-8") as marker:
