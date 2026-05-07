@@ -2,28 +2,52 @@ name: Telegram reminder
 
 on:
   schedule:
-    # GitHub cron uses UTC and can delay jobs that start at minute 0.
-    # These two non-zero-minute runs cover 23:14 in Europe/Kyiv during
-    # summer time (UTC+3) and winter time (UTC+2).
-    - cron: "14 20 * * *"
-    - cron: "14 21 * * *"
+    # GitHub cron is UTC and may be delayed or occasionally dropped.
+    # Run several attempts during the hour that maps to 23:xx in Europe/Kyiv.
+    # Summer time: 20:xx UTC -> 23:xx Kyiv.
+    # Winter time: 21:xx UTC -> 23:xx Kyiv.
+    - cron: "10,25,40,55 20,21 * * *"
   workflow_dispatch:
     inputs:
       force:
-        description: "Send immediately"
+        description: "Send immediately, even outside 23:00 Europe/Kyiv"
         required: false
         default: "true"
+
+concurrency:
+  group: telegram-reminder
+  cancel-in-progress: false
 
 jobs:
   send:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
     steps:
+      - name: Compute Kyiv date
+        id: kyiv
+        run: |
+          echo "date=$(TZ=Europe/Kyiv date +%F)" >> "$GITHUB_OUTPUT"
+          echo "time=$(TZ=Europe/Kyiv date +%H:%M)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore sent marker
+        id: sent-cache
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.force != 'true' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: .telegram-reminder-sent
+          key: telegram-reminder-sent-${{ steps.kyiv.outputs.date }}
+
       - name: Send Telegram reminder
+        id: send
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_REMINDER_TEXT: ${{ vars.TELEGRAM_REMINDER_TEXT }}
           FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && inputs.force == 'true' }}
+          ALREADY_SENT: ${{ steps.sent-cache.outputs.cache-hit == 'true' }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
@@ -31,6 +55,7 @@ jobs:
           import json
           import os
           import sys
+          import urllib.error
           import urllib.request
           from datetime import datetime
           from zoneinfo import ZoneInfo
@@ -49,58 +74,96 @@ jobs:
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
           text = os.environ.get("TELEGRAM_REMINDER_TEXT", "").strip()
           force_send = os.environ.get("FORCE_SEND") == "true"
+          already_sent = os.environ.get("ALREADY_SENT") == "true"
           event_name = os.environ.get("GITHUB_EVENT_NAME", "")
           event_schedule = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
 
-          if not token or not chat_id:
-              sys.exit("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret.")
-
           now = datetime.now(ZoneInfo("Europe/Kyiv"))
-          print(f"Event: {event_name}")
-          print(f"Cron schedule: {event_schedule or 'manual'}")
-          print(f"Europe/Kyiv time: {now:%Y-%m-%d %H:%M:%S %Z}")
-
           summary_lines = [
               "## Telegram reminder",
               "",
               f"- Event: `{event_name}`",
               f"- Schedule: `{event_schedule or 'manual'}`",
               f"- Europe/Kyiv time: `{now:%Y-%m-%d %H:%M:%S %Z}`",
+              f"- Force send: `{force_send}`",
+              f"- Already sent today: `{already_sent}`",
           ]
 
-          if not force_send and now.hour != 23:
-              reason = f"Skipped: Europe/Kyiv time is {now:%H:%M}, not in the 23:00 hour."
-              print(reason)
-              summary_lines.append(f"- Result: `{reason}`")
+          def finish(result, exit_code=0):
+              summary_lines.append(f"- Result: `{result}`")
               summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
               if summary_path:
                   with open(summary_path, "a", encoding="utf-8") as summary:
                       summary.write("\n".join(summary_lines) + "\n")
-              sys.exit(0)
+              print(result)
+              sys.exit(exit_code)
+
+          def telegram_request(method, payload=None):
+              data = None if payload is None else json.dumps(payload).encode("utf-8")
+              request = urllib.request.Request(
+                  f"https://api.telegram.org/bot{token}/{method}",
+                  data=data,
+                  headers={"Content-Type": "application/json"},
+                  method="GET" if data is None else "POST",
+              )
+
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      raw = response.read().decode("utf-8", errors="replace")
+                      return response.status, json.loads(raw)
+              except urllib.error.HTTPError as error:
+                  raw = error.read().decode("utf-8", errors="replace")
+                  try:
+                      body = json.loads(raw)
+                  except json.JSONDecodeError:
+                      body = {"raw": raw}
+                  return error.code, body
+
+          if not token or not chat_id:
+              finish("missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID", 1)
+
+          if already_sent and not force_send:
+              finish("skipped: reminder already sent today")
+
+          if not force_send and now.hour != 23:
+              finish(f"skipped: Europe/Kyiv time is {now:%H:%M}, not in the 23:00 hour")
+
+          status, get_me = telegram_request("getMe")
+          if status != 200 or not get_me.get("ok"):
+              summary_lines.append(f"- Telegram getMe status: `{status}`")
+              summary_lines.append(f"- Telegram getMe response: `{json.dumps(get_me, ensure_ascii=False)}`")
+              finish("failed: bot token is invalid or Telegram getMe failed", 1)
 
           if not text:
               text = "Перевір, чи закрив всі завдання на сьогодні"
 
           message = f"Сьогодні: {weekdays[now.weekday()]}\n\n{text}"
-          payload = json.dumps({
+          status, send_result = telegram_request("sendMessage", {
               "chat_id": chat_id,
               "text": message,
-          }).encode()
+              "disable_web_page_preview": True,
+          })
 
-          request = urllib.request.Request(
-              f"https://api.telegram.org/bot{token}/sendMessage",
-              data=payload,
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
+          summary_lines.append(f"- Telegram sendMessage status: `{status}`")
 
-          with urllib.request.urlopen(request, timeout=20) as response:
-              body = response.read().decode()
-              print(body)
+          if status != 200 or not send_result.get("ok"):
+              summary_lines.append(f"- Telegram sendMessage response: `{json.dumps(send_result, ensure_ascii=False)}`")
+              finish("failed: Telegram did not accept the message", 1)
 
-          summary_lines.append("- Result: `sent`")
-          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary_path:
-              with open(summary_path, "a", encoding="utf-8") as summary:
-                  summary.write("\n".join(summary_lines) + "\n")
+          with open(".telegram-reminder-sent", "w", encoding="utf-8") as marker:
+              marker.write(f"{now:%Y-%m-%d %H:%M:%S %Z}\n")
+
+          github_output = os.environ.get("GITHUB_OUTPUT")
+          if github_output:
+              with open(github_output, "a", encoding="utf-8") as output:
+                  output.write("sent=true\n")
+
+          finish("sent")
           PY
+
+      - name: Save sent marker
+        if: ${{ steps.send.outputs.sent == 'true' && github.event_name != 'workflow_dispatch' && steps.sent-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .telegram-reminder-sent
+          key: telegram-reminder-sent-${{ steps.kyiv.outputs.date }}
