@@ -7,8 +7,8 @@ on:
     # Summer time: 20:xx UTC -> 23:xx Kyiv.
     # Winter time: 21:xx UTC -> 23:xx Kyiv.
     - cron: "10,25,40,55 20,21 * * *"
-    # Temporary test run for 2026-05-07 11:03 Europe/Kyiv.
-    - cron: "3 8 * * *"
+    # Temporary test runs for 2026-05-07. Remove after the scheduled test works.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -42,6 +42,14 @@ jobs:
           path: .telegram-reminder-sent
           key: telegram-reminder-sent-${{ steps.kyiv.outputs.date }}
 
+      - name: Restore test marker
+        id: test-cache
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.force != 'true' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: .telegram-reminder-test-sent
+          key: telegram-reminder-test-sent-${{ steps.kyiv.outputs.date }}
+
       - name: Send Telegram reminder
         id: send
         env:
@@ -50,6 +58,7 @@ jobs:
           TELEGRAM_REMINDER_TEXT: ${{ vars.TELEGRAM_REMINDER_TEXT }}
           FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && inputs.force == 'true' }}
           ALREADY_SENT: ${{ steps.sent-cache.outputs.cache-hit == 'true' }}
+          TEST_ALREADY_SENT: ${{ steps.test-cache.outputs.cache-hit == 'true' }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
@@ -77,12 +86,13 @@ jobs:
           text = os.environ.get("TELEGRAM_REMINDER_TEXT", "").strip()
           force_send = os.environ.get("FORCE_SEND") == "true"
           already_sent = os.environ.get("ALREADY_SENT") == "true"
+          test_already_sent = os.environ.get("TEST_ALREADY_SENT") == "true"
           event_name = os.environ.get("GITHUB_EVENT_NAME", "")
           event_schedule = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
 
           now = datetime.now(ZoneInfo("Europe/Kyiv"))
           is_test_schedule = (
-              event_schedule == "3 8 * * *"
+              event_schedule == "*/5 * * * *"
               and now.strftime("%Y-%m-%d") == "2026-05-07"
           )
           summary_lines = [
@@ -94,6 +104,7 @@ jobs:
               f"- Force send: `{force_send}`",
               f"- Test schedule: `{is_test_schedule}`",
               f"- Already sent today: `{already_sent}`",
+              f"- Test already sent today: `{test_already_sent}`",
           ]
 
           def finish(result, exit_code=0):
@@ -129,6 +140,9 @@ jobs:
           if not token or not chat_id:
               finish("missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID", 1)
 
+          if is_test_schedule and test_already_sent:
+              finish("skipped: test reminder already sent today")
+
           if already_sent and not force_send and not is_test_schedule:
               finish("skipped: reminder already sent today")
 
@@ -157,11 +171,15 @@ jobs:
               summary_lines.append(f"- Telegram sendMessage response: `{json.dumps(send_result, ensure_ascii=False)}`")
               finish("failed: Telegram did not accept the message", 1)
 
-          with open(".telegram-reminder-sent", "w", encoding="utf-8") as marker:
+          marker_path = ".telegram-reminder-test-sent" if is_test_schedule else ".telegram-reminder-sent"
+          with open(marker_path, "w", encoding="utf-8") as marker:
               marker.write(f"{now:%Y-%m-%d %H:%M:%S %Z}\n")
 
           github_output = os.environ.get("GITHUB_OUTPUT")
-          if github_output and not is_test_schedule:
+          if github_output and is_test_schedule:
+              with open(github_output, "a", encoding="utf-8") as output:
+                  output.write("test_sent=true\n")
+          elif github_output:
               with open(github_output, "a", encoding="utf-8") as output:
                   output.write("sent=true\n")
 
@@ -174,3 +192,10 @@ jobs:
         with:
           path: .telegram-reminder-sent
           key: telegram-reminder-sent-${{ steps.kyiv.outputs.date }}
+
+      - name: Save test marker
+        if: ${{ steps.send.outputs.test_sent == 'true' && github.event_name != 'workflow_dispatch' && steps.test-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .telegram-reminder-test-sent
+          key: telegram-reminder-test-sent-${{ steps.kyiv.outputs.date }}
