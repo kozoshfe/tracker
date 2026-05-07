@@ -7,8 +7,6 @@ on:
     # Summer time: 20:xx UTC -> 23:xx Kyiv.
     # Winter time: 21:xx UTC -> 23:xx Kyiv.
     - cron: "10,25,40,55 20,21 * * *"
-    # Temporary test runs for 2026-05-07. Remove after the scheduled test works.
-    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       force:
