@@ -7,6 +7,8 @@ on:
     # Summer time: 20:xx UTC -> 23:xx Kyiv.
     # Winter time: 21:xx UTC -> 23:xx Kyiv.
     - cron: "10,25,40,55 20,21 * * *"
+    # Temporary test run for 2026-05-07 11:03 Europe/Kyiv.
+    - cron: "3 8 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -79,6 +81,10 @@ jobs:
           event_schedule = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
 
           now = datetime.now(ZoneInfo("Europe/Kyiv"))
+          is_test_schedule = (
+              event_schedule == "3 8 * * *"
+              and now.strftime("%Y-%m-%d") == "2026-05-07"
+          )
           summary_lines = [
               "## Telegram reminder",
               "",
@@ -86,6 +92,7 @@ jobs:
               f"- Schedule: `{event_schedule or 'manual'}`",
               f"- Europe/Kyiv time: `{now:%Y-%m-%d %H:%M:%S %Z}`",
               f"- Force send: `{force_send}`",
+              f"- Test schedule: `{is_test_schedule}`",
               f"- Already sent today: `{already_sent}`",
           ]
 
@@ -122,10 +129,10 @@ jobs:
           if not token or not chat_id:
               finish("missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID", 1)
 
-          if already_sent and not force_send:
+          if already_sent and not force_send and not is_test_schedule:
               finish("skipped: reminder already sent today")
 
-          if not force_send and now.hour != 23:
+          if not force_send and not is_test_schedule and now.hour != 23:
               finish(f"skipped: Europe/Kyiv time is {now:%H:%M}, not in the 23:00 hour")
 
           status, get_me = telegram_request("getMe")
@@ -154,7 +161,7 @@ jobs:
               marker.write(f"{now:%Y-%m-%d %H:%M:%S %Z}\n")
 
           github_output = os.environ.get("GITHUB_OUTPUT")
-          if github_output:
+          if github_output and not is_test_schedule:
               with open(github_output, "a", encoding="utf-8") as output:
                   output.write("sent=true\n")
 
