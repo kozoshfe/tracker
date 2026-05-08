@@ -1,8 +1,10 @@
 name: Telegram reminder
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    # Test mode: run every 5 minutes in UTC
     - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
