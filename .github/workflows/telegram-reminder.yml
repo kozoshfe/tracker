@@ -6,7 +6,7 @@ on:
     # Run several attempts during the hour that maps to 23:xx in Europe/Kyiv.
     # Summer time: 20:xx UTC -> 23:xx Kyiv.
     # Winter time: 21:xx UTC -> 23:xx Kyiv.
-    - cron: "10,25,40,55 20,21 * * *"
+    - cron: "30 10 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -161,8 +161,8 @@ jobs:
           if already_sent and not force_send and not is_test_schedule:
               finish("skipped: reminder already sent today")
 
-          if not force_send and not is_test_schedule and now.hour != 23 and not is_delayed_schedule:
-              finish(f"skipped: Europe/Kyiv time is {now:%H:%M}, not in the 23:00 hour or delayed 00:00 grace hour")
+          if not force_send and not is_test_schedule and now.hour != 13 and not is_delayed_schedule:
+              finish(f"skipped: Europe/Kyiv time is {now:%H:%M}, not in the 13:00 hour or delayed 00:00 grace hour")
 
           status, get_me = telegram_request("getMe")
           if status != 200 or not get_me.get("ok"):
