@@ -1,0 +1,53 @@
+{
+  "items": [
+    {"id":"b1238ebe-3b26-495e-b39a-297f4686a6e2","icon":"calendar","type":"rules","color":"purple","title":"1 година пробудження, вбиральня, вихідні без телефона "},
+    {"id":"ddfb0876-e14f-4b5f-869b-5f6500804032","icon":"calendar","type":"rules","color":"purple","title":"Окружати себе порядком"},
+    {"id":"23094d54-f7e5-4307-bb50-19d9ef1ff939","icon":"calendar","type":"rules","color":"purple","title":"Якщо щось не подобається то казати \"Ні\""},
+    {"id":"0510b7e4-bb3b-4e21-8fb9-686b900a212e","icon":"clock","type":"rules","color":"purple","title":"Під час чистки зубів вимовляти 3 слова в  прямо зіниці"},
+    {"id":"c988c3d6-7198-4e1b-80ef-2548a4ea07d4","icon":"calendar","type":"rules","color":"purple","title":"Якщо є 2 хвилинна робота, виконувати зразу."},
+    {"id":"b6c69784-7393-48f2-8c20-b05beeaaf0ad","icon":"target","type":"strategy","color":"purple","order":1,"title":"Торгувати на фіксовану суму 40$","position":"1"},
+    {"id":"17be5069-cd76-42ad-9ee8-70294433e36b","icon":"target","type":"strategy","color":"purple","order":2,"title":"Заходити лиш на сигнали Емілі і Кості","position":"1"},
+    {"id":"3c331a87-a67d-4df3-b1a5-d46466405bb6","icon":"target","type":"strategy","color":"orange","order":3,"title":"Виставляти SL і TP в розмірі 35%"},
+    {"id":"74a5bfd8-7634-438d-97e1-1994641ca02f","icon":"target","type":"strategy","color":"purple","order":4,"title":"Заходити лиш на ізольовану маржу"},
+    {"id":"c9c1596e-57f2-4540-97ea-94fb70ca6cac","icon":"ban","type":"strategy","color":"purple","order":5,"title":"Не залишати відкриті позиції на ніч "},
+    {"id":"d279c5b4-6ed7-47d5-9d2d-2eebce2f9e5f","icon":"ban","type":"goals","color":"orange","order":1,"title":"Не курити","position":"1"},
+    {"id":"92b6a975-7a86-4d8c-8127-d120ec76f617","icon":"ban","type":"goals","color":"orange","order":2,"title":"Не пити","position":"2"},
+    {"id":"4c4edc80-e3de-4401-8881-e8f7179a018c","icon":"ban","type":"goals","color":"orange","order":3,"title":"Не їсти цукор","position":"3"},
+    {"id":"d1adb27a-db81-4fb2-9d7c-281edf7c3229","icon":"ban","type":"goals","color":"orange","order":4,"title":"Не їсти мучне","position":"4"},
+    {"id":"6d65ac4f-0f81-4994-8c35-a19015a1e4aa","icon":"dumbbell","type":"goals","color":"blue","order":5,"title":"Вага 90 кг","position":"4"},
+    {"id":"7dcd9ea8-93da-4004-a9c8-43c658c48551","icon":"target","type":"goals","color":"amber","order":6,"title":"Прокачати Bybit до 300$","position":"6"},
+    {"id":"937f4ec1-5422-43fc-bc9d-f7447b8385a5","icon":"target","type":"goals","color":"green","order":7,"title":"Відкласти 25 000$"}
+  ],
+  "theme": "light",
+  "statsTab": "goals",
+  "activeTab": "goals",
+  "fontSizes": {"board":"14","goals":"14","rules":"14","strategy":"14"},
+  "activeView": "board",
+  "boardItems": [
+    {"id":"1d2e2132-3d4b-4304-ac60-e457890a23f6","icon":"calendar","type":"board","color":"purple","order":1,"title":"Вода 4 склянки"},
+    {"id":"fcd69c93-fcb1-4410-8e01-6631e32fbb7a","icon":"calendar","type":"board","color":"purple","order":2,"title":"Гейнер + Вітамін D"},
+    {"id":"49c469e0-e539-4f5e-a531-9e45938c65f2","icon":"calendar","type":"board","color":"purple","order":3,"title":"Пам'ять за 3 дні"},
+    {"id":"cb79cf17-0a2e-4c1b-8326-90cf521d2856","icon":"calendar","type":"board","color":"purple","order":4,"title":"Англійські слова"},
+    {"id":"89bf9f54-53cb-4a01-84d0-6ce3513468ca","icon":"calendar","type":"board","color":"purple","order":5,"title":"АІ уроки "},
+    {"id":"7619b62d-5799-45f9-9b74-00bec2ebfc69","icon":"calendar","type":"board","color":"purple","order":6,"title":"10000 кроків"},
+    {"id":"407aba10-95d1-4e3f-8b3e-6f053142487a","icon":"calendar","type":"board","color":"purple","order":7,"title":"Гантелі 3 дня на тиждень"}
+  ],
+  "cryptoDays": {"2026-05-01":"minus","2026-05-02":"minus","2026-05-03":"plus","2026-05-04":"plus","2026-05-05":"plus"},
+  "boardChecks": {
+    "1d2e2132-3d4b-4304-ac60-e457890a23f6":{"mon":true,"tue":true},
+    "407aba10-95d1-4e3f-8b3e-6f053142487a":{"mon":true,"tue":true},
+    "49c469e0-e539-4f5e-a531-9e45938c65f2":{"mon":true,"tue":true},
+    "7619b62d-5799-45f9-9b74-00bec2ebfc69":{"mon":true,"tue":true},
+    "89bf9f54-53cb-4a01-84d0-6ce3513468ca":{"mon":true,"tue":true},
+    "cb79cf17-0a2e-4c1b-8326-90cf521d2856":{"mon":true,"tue":true},
+    "fcd69c93-fcb1-4410-8e01-6631e32fbb7a":{"mon":true,"tue":true}
+  },
+  "bedtimeOpens": {"2026-04-30":true,"2026-05-01":true,"2026-05-02":true,"2026-05-03":true},
+  "boardCycleId": "cycle-2026-05-03-2350",
+  "readStatuses": {
+    "goals": {"2026-04-30":true,"2026-05-01":"done","2026-05-02":"done","2026-05-03":"done","2026-05-04":"done","2026-05-05":"done"},
+    "alcohol": {"2026-05-01":"missed","2026-05-02":"missed","2026-05-03":"missed","2026-05-04":"done","2026-05-05":"done"},
+    "calories": {"2026-05-01":"missed","2026-05-02":"missed","2026-05-03":"missed","2026-05-04":"done","2026-05-05":"done"},
+    "nicotine": {"2026-05-01":"missed","2026-05-02":"missed","2026-05-03":"missed","2026-05-04":"missed","2026-05-05":"missed"}
+  }
+}
