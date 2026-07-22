@@ -1285,10 +1285,20 @@ async function syncToCloud() {
       const { error: tasksUpsertError } = await supabaseClient.from(config.tasksTable).upsert(tasks, { onConflict: 'id' });
       if (tasksUpsertError) throw tasksUpsertError;
     }
-    let removeQuery = supabaseClient.from(config.tasksTable).delete().eq('user_id', config.userId);
-    if (taskIds.length) removeQuery = removeQuery.not('id', 'in', `(${taskIds.join(',')})`);
-    const { error: removeError } = await removeQuery;
-    if (removeError) throw removeError;
+    const { data: savedRows, error: savedRowsError } = await supabaseClient
+      .from(config.tasksTable)
+      .select('id')
+      .eq('user_id', config.userId);
+    if (savedRowsError) throw savedRowsError;
+    const staleIds = (savedRows || []).map((row) => row.id).filter((id) => !taskIds.includes(id));
+    if (staleIds.length) {
+      const { error: removeError } = await supabaseClient
+        .from(config.tasksTable)
+        .delete()
+        .eq('user_id', config.userId)
+        .in('id', staleIds);
+      if (removeError) throw removeError;
+    }
 
     const { items, boardItems, ...settingsState } = sanitizeStateForCloud(state);
     const payload = {
