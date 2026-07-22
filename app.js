@@ -1167,19 +1167,18 @@ async function hydrateFromCloud() {
   if (!supabaseClient || !currentUser) return false;
 
   try {
-    const { data, error } = await supabaseClient
-      .from(config.table)
-      .select('state, updated_at')
-      .eq('id', config.rowId)
-      .maybeSingle();
+    const [{ data: settings, error: settingsError }, { data: tasks, error: tasksError }] = await Promise.all([
+      supabaseClient.from(config.settingsTable).select('state, updated_at').eq('user_id', config.userId).maybeSingle(),
+      supabaseClient.from(config.tasksTable).select('*').eq('user_id', config.userId).order('section').order('position'),
+    ]);
+    if (settingsError || tasksError) throw settingsError || tasksError;
 
-    if (error) throw error;
+    const remoteState = stateFromCloudRows(settings?.state, tasks);
+    lastRemoteUpdatedAt = settings?.state?.updatedAt || settings?.updated_at || null;
 
-    lastRemoteUpdatedAt = data?.state?.updatedAt || data?.updated_at || null;
-
-    if (data?.state) {
+    if (remoteState) {
       isHydratingRemote = true;
-      Object.assign(state, normalizeState(data.state));
+      Object.assign(state, normalizeState(remoteState));
       state.activeView = 'board';
       clearLocalStateStorage();
       isHydratingRemote = false;
@@ -1236,9 +1235,9 @@ async function syncToCloud() {
 
   try {
     const { data: remote, error: loadError } = await supabaseClient
-      .from(config.table)
+      .from(config.settingsTable)
       .select('state, updated_at')
-      .eq('id', config.rowId)
+      .eq('user_id', config.userId)
       .maybeSingle();
 
     if (loadError) throw loadError;
@@ -1250,7 +1249,14 @@ async function syncToCloud() {
       new Date(remoteUpdatedAt).getTime() > new Date(lastRemoteUpdatedAt).getTime()
     ) {
       isHydratingRemote = true;
-      Object.assign(state, normalizeState(remote.state));
+      const { data: remoteTasks, error: tasksError } = await supabaseClient
+        .from(config.tasksTable)
+        .select('*')
+        .eq('user_id', config.userId)
+        .order('section')
+        .order('position');
+      if (tasksError) throw tasksError;
+      Object.assign(state, normalizeState(stateFromCloudRows(remote.state, remoteTasks)));
       state.activeView = 'board';
       lastRemoteUpdatedAt = remoteUpdatedAt;
       clearLocalStateStorage();
@@ -1273,12 +1279,24 @@ async function syncToCloud() {
     state.updatedAt = nextUpdatedAt;
     clearLocalStateStorage();
 
+    const tasks = taskRowsFromState(state, config.userId, nextUpdatedAt);
+    const taskIds = tasks.map((task) => task.id);
+    if (tasks.length) {
+      const { error: tasksUpsertError } = await supabaseClient.from(config.tasksTable).upsert(tasks, { onConflict: 'id' });
+      if (tasksUpsertError) throw tasksUpsertError;
+    }
+    let removeQuery = supabaseClient.from(config.tasksTable).delete().eq('user_id', config.userId);
+    if (taskIds.length) removeQuery = removeQuery.not('id', 'in', `(${taskIds.join(',')})`);
+    const { error: removeError } = await removeQuery;
+    if (removeError) throw removeError;
+
+    const { items, boardItems, ...settingsState } = sanitizeStateForCloud(state);
     const payload = {
-      id: config.rowId,
-      state: sanitizeStateForCloud(state),
+      user_id: config.userId,
+      state: settingsState,
       updated_at: nextUpdatedAt,
     };
-    const { error } = await supabaseClient.from(config.table).upsert(payload, { onConflict: 'id' });
+    const { error } = await supabaseClient.from(config.settingsTable).upsert(payload, { onConflict: 'user_id' });
     if (error) throw error;
     lastRemoteUpdatedAt = nextUpdatedAt;
     setSyncStatus(t('syncSaved'));
@@ -1292,9 +1310,45 @@ async function syncToCloud() {
 function getSupabaseConfig() {
   const config = window.TRACKER_SUPABASE || {};
   return {
-    table: config.table || 'tracker_state',
-    rowId: currentUser?.id || config.rowId || 'main',
+    tasksTable: config.tasksTable || 'tracker',
+    settingsTable: config.settingsTable || 'tracker_settings',
+    userId: currentUser?.id,
   };
+}
+
+function taskRowsFromState(value, userId, updatedAt) {
+  const boardDone = value.boardChecks || {};
+  return [...(value.items || []), ...(value.boardItems || [])].map((item, index) => ({
+    id: item.id,
+    user_id: userId,
+    value: item.title,
+    done: item.type === 'board' ? Boolean(boardDone[item.id]) : false,
+    section: item.type,
+    color: item.color || 'purple',
+    icon: item.icon || null,
+    position: Number.isInteger(item.order) ? item.order : index + 1,
+    updated_at: updatedAt,
+  }));
+}
+
+function stateFromCloudRows(settings, tasks) {
+  if (!settings && !tasks?.length) return null;
+  const remoteTasks = tasks || [];
+  // A legacy settings row can still contain its old item arrays until the
+  // one-time SQL migration has populated `tasks`.
+  if (!remoteTasks.length && Array.isArray(settings?.items)) return settings;
+  const boardChecks = { ...(settings?.boardChecks || {}) };
+  const items = remoteTasks
+    .filter((task) => task.section === 'goals' || task.section === 'rules')
+    .map((task) => ({ id: task.id, title: task.value, type: task.section, color: task.color, icon: task.icon, order: task.position }));
+  const boardItems = remoteTasks
+    .filter((task) => task.section === 'board')
+    .map((task) => {
+      if (task.done) boardChecks[task.id] = true;
+      else delete boardChecks[task.id];
+      return { id: task.id, title: task.value, type: 'board', color: task.color, icon: task.icon, order: task.position };
+    });
+  return { ...(settings || {}), items, boardItems, boardChecks };
 }
 
 function updateAuthUi() {
