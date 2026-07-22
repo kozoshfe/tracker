@@ -352,6 +352,7 @@ h1 {
 .nav-item {
   height: 64px;
   min-width: 0;
+  padding: 0;
   border-radius: 10px;
   background: transparent;
   color: var(--muted);
@@ -375,9 +376,18 @@ h1 {
 }
 
 .nav-item small {
+  max-width: 100%;
+  overflow: hidden;
   font-size: 10px;
   line-height: 1;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The Settings label is longer than the other four labels on a narrow phone. */
+.nav-item[data-view="settings"] small {
+  font-size: 9px;
+  letter-spacing: -0.22px;
 }
 
 .stats-view,
