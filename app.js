@@ -1,1318 +1,1507 @@
-const SUPABASE_URL = "https://qzcapeempzzdhicsweqz.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_nXxnpG6C_RO9mVqcYEt1mg_Z9Z-dpDr";
-const SUPABASE_TABLE = "tasks";
-const LEGACY_STORAGE_KEY = "simple-task-pwa-state";
-const PENDING_STORAGE_KEY = "simple-task-pwa-pending-state";
-const APP_VERSION = "76";
-const APP_VERSION_KEY = "simple-task-pwa-version";
-const ACCESS_STORAGE_KEY = "simple-task-pwa-access-granted";
-const ACCESS_CODE = "15057050";
-const DOUBLE_TAP_DELAY_MS = 280;
-const PRIORITIES = {
-  high: {
-    label: "Високий",
-    className: "priority-high",
-  },
-  medium: {
-    label: "Середній",
-    className: "priority-medium",
-  },
-  low: {
-    label: "Лоу",
-    className: "priority-low",
-  },
-};
-const PRIORITY_ORDER = {
-  high: 0,
-  medium: 1,
-  low: 2,
-  none: 3,
+const icons = {
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  moon: '<svg viewBox="0 0 24 24"><path d="M21 15.5A8.5 8.5 0 1 1 8.5 3a6.7 6.7 0 0 0 12.5 12.5Z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  bar: '<svg viewBox="0 0 24 24"><path d="M6 20V10M12 20V4M18 20v-7"/></svg>',
+  grid: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  settings: '<svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9c.12.58.76 1 1.56 1H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>',
+  dots: '<svg viewBox="0 0 24 24"><path d="M12 12h.01M19 12h.01M5 12h.01"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  target: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+  dumbbell: '<svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M2 9v6M22 9v6M6 12h12"/></svg>',
+  ban: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 7.7 7 10 4-2.3 7-5.5 7-10V6l-7-3Z"/><path d="M12 8v5"/></svg>',
+  leaf: '<svg viewBox="0 0 24 24"><path d="M20 4c-8 0-13 4.5-13 11a5 5 0 0 0 5 5c6.5 0 8-8 8-16Z"/><path d="M4 20c3-6 8-9 14-11"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M4 9h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 };
 
-const els = {
-  addButton: document.querySelector("#addButton"),
-  closeTaskModalButton: document.querySelector("#closeTaskModalButton"),
-  micButton: document.querySelector("#micButton"),
-  navMicButton: document.querySelector("#navMicButton"),
-  submitTaskButton: document.querySelector("#submitTaskButton"),
-  taskCount: document.querySelector("#taskCount"),
-  taskInput: document.querySelector("#taskInput"),
-  taskReminder: document.querySelector("#taskReminder"),
-  newReminderEnabled: document.querySelector("#newReminderEnabled"),
-  newReminderDay: document.querySelector("#newReminderDay"),
-  newReminderMonth: document.querySelector("#newReminderMonth"),
-  newReminderYear: document.querySelector("#newReminderYear"),
-  newReminderHour: document.querySelector("#newReminderHour"),
-  newReminderMinute: document.querySelector("#newReminderMinute"),
-  taskRepeat: document.querySelector("#taskRepeat"),
-  taskModal: document.querySelector("#taskModal"),
-  taskList: document.querySelector("#taskList"),
-  taskFilterTabs: document.querySelectorAll("[data-task-filter]"),
-  appShell: document.querySelector(".app-shell"),
-  tasksPanel: document.querySelector("#tasksPanel"),
-  tasksTab: document.querySelector("#tasksTab"),
-  trashCount: document.querySelector("#trashCount"),
-  trashList: document.querySelector("#trashList"),
-  trashPanel: document.querySelector("#trashPanel"),
-  trashTab: document.querySelector("#trashTab"),
-  voiceStatus: document.querySelector("#voiceStatus"),
-  accessScreen: document.querySelector("#accessScreen"),
-  accessForm: document.querySelector("#accessForm"),
-  accessCode: document.querySelector("#accessCode"),
-  accessError: document.querySelector("#accessError"),
+const defaults = [
+  { id: crypto.randomUUID(), type: 'goals', title: 'Заробляти 3000$ в місяць', color: 'purple', icon: 'target' },
+  { id: crypto.randomUUID(), type: 'goals', title: 'Вага 88 кг', color: 'green', icon: 'dumbbell' },
+  { id: crypto.randomUUID(), type: 'goals', title: 'Не їсти солодке і мучне', color: 'amber', icon: 'ban' },
+  { id: crypto.randomUUID(), type: 'rules', title: 'Не пропускати тренування', color: 'purple', icon: 'shield' },
+  { id: crypto.randomUUID(), type: 'rules', title: 'Не їсти сміття', color: 'green', icon: 'leaf' },
+  { id: crypto.randomUUID(), type: 'rules', title: 'Працювати кожен день', color: 'orange', icon: 'calendar' },
+  { id: crypto.randomUUID(), type: 'rules', title: 'Не витрачати час даремно', color: 'blue', icon: 'clock' },
+];
+
+const copy = {
+  appTitle: 'Мої цілі',
+  board: 'Борда',
+  goals: 'Цілі',
+  rules: 'Правила',
+  alcohol: 'Алкоголь',
+  nicotine: 'Нікотин',
+  calories: 'Калорії',
+  exercises: 'Вправи',
+  list: 'Список',
+  stats: 'Статистика',
+  settings: 'Налаштування',
+  readDone: 'Прочитано',
+  mainNav: 'Основна навігація',
+  tabsNav: 'Тип списку',
+  lightTheme: 'Світла тема',
+  themeHint: 'Перемикай вигляд одним натисканням',
+  fontSize: 'Розмір шрифту',
+  fontSizeGoals: 'Розмір шрифту: Цілі',
+  fontSizeRules: 'Розмір шрифту: Правила',
+  fontSizeBoard: 'Розмір шрифту: Борда',
+  fontSizeHint: 'Від меншого до більшого',
+  sleepPoints: 'днів підряд',
+  syncLocal: 'Локальне збереження',
+  syncReady: 'Синхронізація увімкнена',
+  syncSaved: 'Збережено в Supabase',
+  syncLoading: 'Завантажую з Supabase',
+  syncError: 'Supabase недоступний',
+  syncNeedsLogin: 'Увійди, щоб синхронізувати',
+  syncLoggedIn: 'Вхід активний',
+  syncInvalidRedirect: 'Додай localhost у Redirect URLs в Supabase',
+  syncEmailDisabled: 'Увімкни Email auth у Supabase',
+  syncBadRequest: 'Перевір налаштування Supabase',
+  syncNeedHttp: 'Відкрий додаток через localhost, не через file://',
+  authNeedCredentials: 'Введи email і пароль',
+  authLoginError: 'Помилка входу',
+  installIos: 'На iPhone: Поділитися -> На екран Додому',
+  installUnavailable: 'Відкрий сайт через HTTPS у Chrome або Safari',
+  installOpen: 'Додаток вже встановлено',
+  installReady: 'Можна встановити як додаток',
+  installAndroidSteps: 'На Android відкрий меню браузера і вибери "Install app" або "Додати на головний екран".',
+  item: 'Пункт',
+  title: 'Назва',
+  position: 'Позиція',
+  section: 'Розділ',
+  color: 'Колір',
+  delete: 'Видалити',
+  save: 'Зберегти',
+  add: 'Додати пункт',
+  theme: 'Змінити тему',
+  close: 'Закрити',
+  logout: 'Вийти',
+  plusDays: 'Плюс',
+  minusDays: 'Мінус',
+  colors: ['Фіолетовий', 'Зелений', 'Жовтий', 'Помаранчевий', 'Синій'],
 };
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const storageKey = 'goals-pwa-state';
+const exerciseIds = ['arms', 'shoulders', 'triceps'];
+const state = loadState();
+
+let editingId = null;
 let supabaseClient = null;
-let recognition = null;
-let shouldAutoAddVoiceResult = false;
-let dragState = null;
-let navMicTapTimer = null;
-let priorityPickerTaskId = null;
-let activeTaskFilter = "all";
-let taskFilterSwipe = null;
-let syncedTaskIds = new Set();
-const state = {
-  tasks: [],
-  trash: [],
+let syncTimer = null;
+let isHydratingRemote = false;
+let currentUser = null;
+let lastRemoteUpdatedAt = null;
+let boardTapState = { key: '', count: 0, ts: 0 };
+let sleepTapState = { key: '', count: 0, ts: 0 };
+let exerciseTapState = { key: '', count: 0, ts: 0 };
+let editorMode = 'list';
+
+applyTimeBasedStateUpdates();
+const els = {
+  list: document.querySelector('.list'),
+  readButton: document.querySelector('.read-button'),
+  boardView: document.querySelector('.board-view'),
+  boardHead: document.querySelector('.board-head'),
+  boardBody: document.querySelector('.board-body'),
+  boardAdd: document.querySelector('.board-add'),
+  boardManage: document.querySelector('.board-manage'),
+  boardShortcuts: document.querySelectorAll('[data-board-shortcut]'),
+  appShell: document.getElementById('appShell'),
+  authScreen: document.getElementById('authScreen'),
+  listTabs: document.querySelector('.tabs-list'),
+  statsTabs: document.querySelector('.tabs-stats'),
+  tabButtons: document.querySelectorAll('.tab'),
+  statsTabButtons: document.querySelectorAll('[data-stats-tab]'),
+  navButtons: document.querySelectorAll('.nav-item'),
+  add: document.querySelector('.add-button'),
+  dialog: document.querySelector('.editor'),
+  form: document.querySelector('.editor-card'),
+  delete: document.querySelector('.delete-item'),
+  themeToggle: document.querySelector('.theme-toggle'),
+  themeSwitch: document.querySelector('.theme-switch'),
+  fontSizeButtons: document.querySelectorAll('[data-font-size]'),
+  sleepCalendars: document.querySelectorAll('.sleep-calendar'),
+  sleepMonths: document.querySelectorAll('.sleep-month'),
+  sleepStreakNumbers: document.querySelectorAll('.sleep-streak-number'),
+  sleepStreakTexts: document.querySelectorAll('.sleep-streak-text'),
+  authForm: document.querySelector('.auth-form'),
+  authEmail: document.getElementById('simpleLogin'),
+  authPassword: document.getElementById('simplePassword'),
+  authMessage: document.getElementById('simpleLoginMsg'),
+  authLogout: document.querySelector('.header-logout'),
+  statsView: document.querySelector('.stats-view'),
+  exercisesView: document.querySelector('.exercises-view'),
+  exerciseCards: document.querySelectorAll('.exercises-card'),
+  exerciseDayButtons: document.querySelectorAll('[data-exercise-day]'),
+  statsReadButton: document.querySelector('.stats-read-button'),
+  statsAlcoholActions: document.querySelector('.stats-alcohol-actions'),
+  alcoholDrinkButton: document.querySelector('[data-alcohol-action="drank"]'),
+  alcoholCleanButton: document.querySelector('[data-alcohol-action="clean"]'),
+  settingsView: document.querySelector('.settings-view'),
 };
 
-function fillReminderSelect(select, values, selected) {
-  select.replaceChildren(...values.map(([value, text]) => new Option(text, value, value === selected, value === selected)));
-}
+document.querySelectorAll('[data-icon]').forEach((node) => {
+  node.innerHTML = icons[node.dataset.icon] || '';
+});
 
-function setupNewReminderPicker() {
-  const now = new Date(Date.now() + 3600000);
-  fillReminderSelect(els.newReminderDay, Array.from({ length: 31 }, (_, i) => {
-    const value = String(i + 1).padStart(2, "0"); return [value, value];
-  }), String(now.getDate()).padStart(2, "0"));
-  fillReminderSelect(els.newReminderMonth, ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"].map((text, i) => [String(i), text]), String(now.getMonth()));
-  fillReminderSelect(els.newReminderYear, Array.from({ length: 6 }, (_, i) => {
-    const year = String(now.getFullYear() + i); return [year, year];
-  }), String(now.getFullYear()));
-  fillReminderSelect(els.newReminderHour, Array.from({ length: 24 }, (_, i) => { const v = String(i).padStart(2, "0"); return [v, v]; }), String(now.getHours()).padStart(2, "0"));
-  fillReminderSelect(els.newReminderMinute, Array.from({ length: 12 }, (_, i) => { const v = String(i * 5).padStart(2, "0"); return [v, v]; }), String(Math.round(now.getMinutes() / 5) * 5 % 60).padStart(2, "0"));
-}
+applyTheme();
+applyCopy();
+applyFontSize();
+finalizeReadStatuses();
+render();
+initSupabaseSync();
 
-function getNewReminderValue() {
-  return new Date(Number(els.newReminderYear.value), Number(els.newReminderMonth.value), Number(els.newReminderDay.value), Number(els.newReminderHour.value), Number(els.newReminderMinute.value)).toISOString();
-}
-
-function updateNewReminderVisibility() {
-  els.taskReminder.hidden = !els.newReminderEnabled.checked;
-  if (!els.newReminderEnabled.checked) els.taskRepeat.value = "none";
-}
-
-function ensureAppVersion() {
-  const savedVersion = localStorage.getItem(APP_VERSION_KEY);
-  const currentUrl = new URL(window.location.href);
-  const currentVersionParam = currentUrl.searchParams.get("appv");
-
-  if (savedVersion !== APP_VERSION && currentVersionParam !== APP_VERSION) {
-    localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
-    currentUrl.searchParams.set("appv", APP_VERSION);
-    window.location.replace(currentUrl.toString());
-    return false;
-  }
-
-  localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
-  return true;
-}
-
-async function openApp() {
-  if (!ensureAppVersion()) return;
-  await initDatabase();
-  document.body.classList.remove("access-locked");
-  els.accessScreen.hidden = true;
-}
-
-function hasGrantedAccess() {
-  try {
-    return localStorage.getItem(ACCESS_STORAGE_KEY) === "true" || window.AndroidAccess?.hasAccess?.() === true;
-  } catch (_) {
-    return window.AndroidAccess?.hasAccess?.() === true;
-  }
-}
-
-function rememberGrantedAccess() {
-  try {
-    localStorage.setItem(ACCESS_STORAGE_KEY, "true");
-  } catch (_) {}
-  window.AndroidAccess?.grant?.();
-}
-
-function setupAccessGate() {
-  if (hasGrantedAccess()) {
-    // Migrate users who previously authenticated only in WebView storage.
-    rememberGrantedAccess();
-    openApp();
-    return;
-  }
-
-  els.accessForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    if (els.accessCode.value === ACCESS_CODE) {
-      rememberGrantedAccess();
-      els.accessError.textContent = "";
-      openApp();
-      return;
-    }
-
-    els.accessError.textContent = "Невірний код. Спробуйте ще раз.";
-    els.accessCode.select();
-  });
-  els.accessCode.focus();
-}
-
-function normalizeState(value) {
-  return {
-    tasks: Array.isArray(value?.tasks) ? value.tasks.map(normalizeTask) : [],
-    trash: Array.isArray(value?.trash) ? value.trash.map(normalizeTask) : [],
-  };
-}
-
-function normalizeTask(task) {
-  const priority = task?.priority === "priority-high" ? "high"
-    : task?.priority === "priority-medium" ? "medium"
-      : task?.priority === "priority-low" ? "low" : task?.priority;
-  return {
-    ...task,
-    priority: hasPriority(priority) ? priority : null,
-  };
-}
-
-function hasPriority(priority) {
-  return Object.prototype.hasOwnProperty.call(PRIORITIES, priority);
-}
-
-function getPriorityRank(task) {
-  return hasPriority(task?.priority) ? PRIORITY_ORDER[task.priority] : PRIORITY_ORDER.none;
-}
-
-function sortTasksByPriority(tasks) {
-  return tasks
-    .map((task, index) => ({ task, index }))
-    .sort((a, b) => getPriorityRank(a.task) - getPriorityRank(b.task) || a.index - b.index)
-    .map(({ task }) => task);
-}
-
-function sortActiveTasks() {
-  state.tasks = sortTasksByPriority(state.tasks);
-}
-
-function getFilteredTasks() {
-  const isBuyTask = (task) => task.title.toLocaleLowerCase("uk-UA").includes("купит");
-  const isUrgentTask = (task) => task.priority === "high";
-  const isReminderTask = (task) => Boolean(task.reminderAt);
-
-  if (activeTaskFilter === "urgent") {
-    return state.tasks.filter((task) => !isReminderTask(task) && isUrgentTask(task));
-  }
-
-  if (activeTaskFilter === "buy") {
-    return state.tasks.filter((task) => !isReminderTask(task) && isBuyTask(task));
-  }
-
-  return state.tasks.filter((task) => !isReminderTask(task) && !isUrgentTask(task) && !isBuyTask(task));
-}
-
-function applyState(nextState) {
-  const normalized = normalizeState(nextState);
-  state.tasks = sortTasksByPriority(normalized.tasks);
-  state.trash = normalized.trash;
-}
-
-function readLegacyState() {
-  try {
-    return normalizeState(JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY)));
-  } catch {
-    return { tasks: [], trash: [] };
-  }
-}
-
-function readPendingState() {
-  try {
-    return normalizeState(JSON.parse(localStorage.getItem(PENDING_STORAGE_KEY)));
-  } catch {
-    return { tasks: [], trash: [] };
-  }
-}
-
-function hasTasks(value) {
-  return value.tasks.length > 0 || value.trash.length > 0;
-}
-
-function getStateSnapshot() {
-  sortActiveTasks();
-  return {
-    tasks: state.tasks,
-    trash: state.trash,
-  };
-}
-
-function toDatabaseTask(task, isDeleted) {
-  return {
-    id: task.id,
-    value: task.title,
-    done: Boolean(task.done),
-    priority: task.priority || null,
-    created_at: new Date(task.createdAt || Date.now()).toISOString(),
-    reminder_at: task.reminderAt || null,
-    recurrence: task.recurrence || null,
-    last_completed_at: task.lastCompletedAt ? new Date(task.lastCompletedAt).toISOString() : null,
-    deleted_at: isDeleted ? new Date(task.deletedAt || Date.now()).toISOString() : null,
-  };
-}
-
-function fromDatabaseTask(row) {
-  return normalizeTask({
-    id: row.id,
-    title: row.value,
-    done: row.done,
-    priority: row.priority,
-    createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-    reminderAt: row.reminder_at,
-    recurrence: row.recurrence,
-    lastCompletedAt: row.last_completed_at ? new Date(row.last_completed_at).getTime() : null,
-    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
-  });
-}
-
-function setSyncStatus() {
-  // Sync messages stay silent in the UI.
-}
-
-function getSupabaseHeaders(extra = {}) {
-  return {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    ...extra,
-  };
-}
-
-async function parseSupabaseError(response) {
-  try {
-    const body = await response.json();
-    return body.message || body.error || response.statusText;
-  } catch {
-    return response.statusText;
-  }
-}
-
-async function saveState() {
-  localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(getStateSnapshot()));
-  setSyncStatus("Зберігаю...", "neutral");
-
-  if (!supabaseClient) {
-    console.error("Supabase client is not ready.");
-    setSyncStatus("Не підключено до бази. Збережено тимчасово.", "error");
-    return false;
-  }
-
-  const snapshot = getStateSnapshot();
-  const rows = [
-    ...snapshot.tasks.map((task) => toDatabaseTask(task, false)),
-    ...snapshot.trash.map((task) => toDatabaseTask(task, true)),
-  ];
-  const currentIds = new Set(rows.map((task) => task.id));
-
-  try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
-      method: "POST",
-      headers: getSupabaseHeaders({
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      }),
-      body: JSON.stringify(rows),
-    });
-
-    if (!response.ok) throw new Error(await parseSupabaseError(response));
-
-    const removedIds = [...syncedTaskIds].filter((id) => !currentIds.has(id));
-    if (removedIds.length) {
-      const deleteResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${removedIds.join(",")})`,
-        { method: "DELETE", headers: getSupabaseHeaders() },
-      );
-      if (!deleteResponse.ok) throw new Error(await parseSupabaseError(deleteResponse));
-    }
-
-    syncedTaskIds = currentIds;
-  } catch (error) {
-    console.error("Failed to save tasks to Supabase:", error);
-    setSyncStatus("Не збережено в базу: немає з'єднання", "error");
-    return false;
-  }
-
-  localStorage.removeItem(LEGACY_STORAGE_KEY);
-  localStorage.removeItem(PENDING_STORAGE_KEY);
-  setSyncStatus("Збережено в базу", "success");
-  return true;
-}
-
-async function loadState() {
-  if (!supabaseClient) return;
-  setSyncStatus("Читаю базу...", "neutral");
-
-  const legacyState = readLegacyState();
-  const pendingState = readPendingState();
-  let rows = null;
-
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=created_at.asc`,
-      {
-        headers: getSupabaseHeaders(),
-      },
-    );
-    if (!response.ok) throw new Error(await parseSupabaseError(response));
-    rows = await response.json();
-
-    // Completed one-off tasks are not kept as history in the shared table.
-    const completedOneOffIds = rows
-      .filter((row) => row.done && !row.recurrence)
-      .map((row) => row.id);
-    if (completedOneOffIds.length) {
-      const deleteResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${completedOneOffIds.join(",")})`,
-        { method: "DELETE", headers: getSupabaseHeaders() },
-      );
-      if (!deleteResponse.ok) throw new Error(await parseSupabaseError(deleteResponse));
-      rows = rows.filter((row) => !completedOneOffIds.includes(row.id));
-    }
-  } catch (error) {
-    console.error("Failed to load tasks from Supabase:", error);
-    setSyncStatus("Не прочитано з бази", "error");
-    if (hasTasks(pendingState)) applyState(pendingState);
-    else if (hasTasks(legacyState)) applyState(legacyState);
+els.tabButtons.forEach((button) => {
+  if (!button.dataset.tab) return;
+  button.addEventListener('click', () => {
+    state.activeTab = button.dataset.tab;
+    saveState();
     render();
-    return;
-  }
+  });
+});
 
-  // The shared database is the source of truth. A stale offline copy from a
-  // different browser must never overwrite the current shared task list.
-  if (rows.length) {
-    applyState({
-      tasks: rows.filter((row) => !row.deleted_at).map(fromDatabaseTask),
-      trash: rows.filter((row) => row.deleted_at).map(fromDatabaseTask),
-    });
-    syncedTaskIds = new Set(rows.map((row) => row.id));
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-    localStorage.removeItem(PENDING_STORAGE_KEY);
-  } else if (hasTasks(legacyState)) {
-    applyState(legacyState);
-    setSyncStatus("Локальні таски готові до збереження", "neutral");
-  } else if (hasTasks(pendingState)) {
-    applyState(pendingState);
-    setSyncStatus("Локальні таски готові до збереження", "neutral");
-  } else {
-    applyState({ tasks: [], trash: [] });
-    setSyncStatus("База підключена", "success");
-  }
-
-  render();
-  if (!hasTasks(readPendingState())) setSyncStatus("База підключена", "success");
-}
-
-async function initDatabase() {
-  if (window.location.protocol === "file:") {
-    setSyncStatus("Локальний файл не синхронізується з базою", "neutral");
-    return;
-  }
-
-  supabaseClient = true;
-  await loadState();
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat("uk-UA", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function formatTaskTitle(title) {
-  const cleanTitle = title.trim();
-  if (!cleanTitle) return "";
-
-  return cleanTitle.charAt(0).toLocaleUpperCase("uk-UA") + cleanTitle.slice(1);
-}
-
-function createTask(title) {
-  return {
-    id: crypto.randomUUID(),
-    title: formatTaskTitle(title),
-    done: false,
-    createdAt: Date.now(),
-    priority: null,
-    reminderAt: null,
-    recurrence: null,
-  };
-}
-
-function parseVoiceReminder(text) {
-  const months = {
-    січня: 0, лютого: 1, березня: 2, квітня: 3, травня: 4, червня: 5,
-    липня: 6, серпня: 7, вересня: 8, жовтня: 9, листопада: 10, грудня: 11,
-  };
-  const now = new Date();
-  const relativeMatch = text.match(/(?:^|\s)(сьогодні|завтра)(?=\s|$)(?:\s*(?:о|в))?\s*(\d{1,2})?(?:\s*[:.,]\s*(\d{1,2}))?/i);
-  if (relativeMatch) {
-    const reminderDate = new Date(now);
-    if (relativeMatch[1].toLocaleLowerCase("uk-UA") === "завтра") {
-      reminderDate.setDate(reminderDate.getDate() + 1);
-    }
-
-    const hasTime = relativeMatch[2] !== undefined;
-    const roundedMinutes = Math.ceil((now.getMinutes() + 1) / 5) * 5;
-    const hour = hasTime ? Number(relativeMatch[2]) : now.getHours() + Math.floor(roundedMinutes / 60);
-    const minute = hasTime ? Number(relativeMatch[3] || 0) : roundedMinutes % 60;
-    reminderDate.setHours(hour, minute, 0, 0);
-
-    const title = text.replace(relativeMatch[0], " ").replace(/^\s*(?:на|для)\s+/i, "").replace(/\s+/g, " ").trim();
-    return { title: title || text, reminderAt: reminderDate.toISOString() };
-  }
-
-  const match = text.match(/(?:на\s+)?(\d{1,2})\s+(січня|лютого|березня|квітня|травня|червня|липня|серпня|жовтня|листопада|грудня)(?:\s+(\d{4}))?\s*(?:о|в)\s*(\d{1,2})(?:\s*[:.,]\s*(\d{1,2}))?/i);
-  if (!match) return { title: text, reminderAt: null };
-
-  const year = Number(match[3] || now.getFullYear());
-  const hour = Number(match[4]);
-  const minute = Number(match[5] || 0);
-  const reminderDate = new Date(year, months[match[2].toLocaleLowerCase("uk-UA")], Number(match[1]), hour, minute);
-  if (!match[3] && reminderDate.getTime() < Date.now()) reminderDate.setFullYear(year + 1);
-  const title = text.replace(match[0], " ").replace(/\s+/g, " ").trim();
-  return { title: title || text, reminderAt: reminderDate.toISOString() };
-}
-
-function scheduleNativeReminder(task) {
-  if (!task.reminderAt || !window.AndroidNotifications?.schedule) return;
-  window.AndroidNotifications.schedule(String(task.id), task.title, new Date(task.reminderAt).getTime());
-}
-
-function cancelNativeReminder(taskId) {
-  window.AndroidNotifications?.cancel?.(String(taskId));
-}
-
-function rescheduleNativeReminders() {
-  state.tasks.forEach((task) => scheduleNativeReminder(task));
-}
-
-async function addTask() {
-  const title = els.taskInput.value.trim();
-  if (!title) {
-    els.taskInput.focus();
-    return;
-  }
-
-  const parsedTitle = parseVoiceReminder(title);
-  const task = createTask(parsedTitle.title);
-  task.reminderAt = parsedTitle.reminderAt || (els.newReminderEnabled.checked ? getNewReminderValue() : null);
-  task.recurrence = task.reminderAt && els.taskRepeat.value !== "none" ? els.taskRepeat.value : null;
-  state.tasks.push(task);
-  scheduleNativeReminder(task);
-  els.taskInput.value = "";
-  els.newReminderEnabled.checked = false;
-  updateNewReminderVisibility();
-  els.taskRepeat.value = "none";
-  closeTaskModal();
-  render();
-  await saveState();
-}
-
-async function addTaskFromTitle(title) {
-  const cleanTitle = title.trim();
-  if (!cleanTitle) return;
-
-  const parsed = parseVoiceReminder(cleanTitle);
-  const task = createTask(parsed.title);
-  task.reminderAt = parsed.reminderAt;
-  state.tasks.push(task);
-  scheduleNativeReminder(task);
-  render();
-  await saveState();
-}
-
-function openTaskTitleEditor(task) {
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop title-editor-backdrop";
-  backdrop.setAttribute("role", "dialog");
-  backdrop.setAttribute("aria-modal", "true");
-  backdrop.setAttribute("aria-label", "Редагувати назву таски");
-
-  const card = document.createElement("section");
-  card.className = "composer modal-card";
-  const heading = document.createElement("div");
-  heading.className = "modal-heading";
-  heading.innerHTML = "<h2>Редагувати таску</h2>";
-  const closeButton = document.createElement("button");
-  closeButton.className = "modal-close-button";
-  closeButton.type = "button";
-  closeButton.textContent = "×";
-  closeButton.setAttribute("aria-label", "Скасувати");
-  heading.append(closeButton);
-
-  const label = document.createElement("label");
-  label.className = "input-label";
-  label.textContent = "Назва таски";
-  const input = document.createElement("input");
-  input.type = "text";
-  input.value = task.title;
-  input.maxLength = 160;
-  label.append(input);
-
-  const saveButton = document.createElement("button");
-  saveButton.className = "modal-submit-button";
-  saveButton.type = "button";
-  saveButton.textContent = "Зберегти";
-  const close = () => backdrop.remove();
-  closeButton.addEventListener("click", close);
-  backdrop.addEventListener("click", (event) => { if (event.target === backdrop) close(); });
-  const save = async () => {
-    const title = formatTaskTitle(input.value);
-    if (!title) {
-      input.focus();
-      return;
-    }
-    task.title = title;
-    close();
+els.statsTabButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.statsTab = button.dataset.statsTab;
+    saveState();
     render();
-    await saveState();
-  };
-  saveButton.addEventListener("click", save);
-  input.addEventListener("keydown", (event) => { if (event.key === "Enter") save(); });
-  card.append(heading, label, saveButton);
-  backdrop.append(card);
-  document.body.append(backdrop);
-  window.requestAnimationFrame(() => {
-    backdrop.classList.add("open");
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
   });
-}
+});
 
-function openTaskModal() {
-  els.taskModal.hidden = false;
-  window.requestAnimationFrame(() => {
-    els.taskModal.classList.add("open");
-    els.taskInput.focus();
+els.navButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.activeView = button.dataset.view;
+    if (button.dataset.view === 'list') {
+      state.activeTab = 'goals';
+    }
+    if (button.dataset.view === 'stats') {
+      state.statsTab = 'goals';
+    }
+    saveState();
+    render();
   });
-}
+});
 
-function startVoiceInput({ autoAdd = false } = {}) {
-  if (window.AndroidSpeech?.start) {
-    shouldAutoAddVoiceResult = autoAdd;
-    els.voiceStatus.textContent = "Слухаю...";
-    window.AndroidSpeech.start();
-    return;
-  }
-  if (!recognition) {
-    els.voiceStatus.textContent = "Голосове введення недоступне в цьому браузері.";
-    return;
-  }
+els.boardShortcuts.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.activeView = 'stats';
+    state.statsTab = button.dataset.boardShortcut;
+    saveState();
+    render();
+  });
+});
 
-  shouldAutoAddVoiceResult = autoAdd;
+els.add.addEventListener('click', () => openEditor());
+els.boardAdd?.addEventListener('click', () => {
+  openBoardEditor();
+});
+els.boardManage?.addEventListener('click', () => {
+  const firstBoardItem = state.boardItems[0];
+  openBoardEditor(firstBoardItem?.id);
+});
+els.themeToggle.addEventListener('click', toggleTheme);
+els.themeSwitch.addEventListener('click', toggleTheme);
 
-  try {
-    recognition.start();
-  } catch {
-    els.voiceStatus.textContent = "Мікрофон уже слухає.";
-  }
-}
+els.fontSizeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const scope = button.dataset.fontScope || 'goals';
+    state.fontSizes = {
+      ...getNormalizedFontSizes(state.fontSizes),
+      [scope]: button.dataset.fontSize,
+    };
+    saveState();
+    applyFontSize();
+  });
+});
 
-window.onAndroidSpeechResult = async (text) => {
-  const transcript = String(text || "").trim();
-  if (!transcript) return;
-  if (shouldAutoAddVoiceResult) {
-    shouldAutoAddVoiceResult = false;
-    await addTaskFromTitle(transcript);
-  } else {
-    els.taskInput.value = transcript;
-    els.taskInput.focus();
-  }
-  els.voiceStatus.textContent = "Готово.";
-};
-
-window.onAndroidSpeechError = (message) => {
-  shouldAutoAddVoiceResult = false;
-  els.voiceStatus.textContent = message || "Не вдалося розпізнати голос.";
-};
-
-function addVoiceTask() {
-  startVoiceInput({ autoAdd: true });
-}
-
-function handleNavMicTap(event) {
+els.authForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  await authLogin();
+});
 
-  if (navMicTapTimer) {
-    window.clearTimeout(navMicTapTimer);
-    navMicTapTimer = null;
-    openTaskModal();
-    return;
+els.authLogout.addEventListener('click', async () => {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+});
+
+els.readButton?.addEventListener('click', () => {
+  if (state.activeView === 'stats' && state.statsTab === 'goals') {
+    markTodayAsRead();
   }
+});
 
-  navMicTapTimer = window.setTimeout(() => {
-    navMicTapTimer = null;
-    addVoiceTask();
-  }, DOUBLE_TAP_DELAY_MS);
-}
+els.statsReadButton?.addEventListener('click', () => {
+  markTodayAsRead();
+});
 
-function closeTaskModal() {
-  els.taskModal.classList.remove("open");
-  els.taskModal.hidden = true;
-  els.voiceStatus.textContent = "";
-}
+els.alcoholDrinkButton?.addEventListener('click', () => {
+  markTodayBinaryStatus('missed');
+});
 
-function getNextReminderAt(task) {
-  const now = new Date();
-  const next = new Date(task.reminderAt || now);
+els.alcoholCleanButton?.addEventListener('click', () => {
+  markTodayBinaryStatus('done');
+});
 
-  if (task.recurrence === "daily") {
-    do next.setDate(next.getDate() + 1); while (next <= now);
-  } else if (task.recurrence === "weekly-monday") {
-    do next.setDate(next.getDate() + 1); while (next.getDay() !== 1 || next <= now);
-  } else if (task.recurrence === "monthly-20") {
-    do {
-      next.setMonth(next.getMonth() + 1, 20);
-    } while (next <= now);
-  } else {
-    return null;
-  }
-
-  return next.toISOString();
-}
-
-function isSameCalendarDay(first, second = new Date()) {
-  return first.getFullYear() === second.getFullYear()
-    && first.getMonth() === second.getMonth()
-    && first.getDate() === second.getDate();
-}
-
-function isRecurringTaskCompletedToday(task) {
-  return Boolean(task.recurrence && task.lastCompletedAt
-    && isSameCalendarDay(new Date(task.lastCompletedAt)));
-}
-
-function isRecurringTaskReadyToComplete(task) {
-  return Boolean(task.recurrence && task.reminderAt
-    && new Date(task.reminderAt).getTime() <= Date.now());
-}
-
-async function moveToTrash(id, { openTrash = true } = {}) {
-  const index = state.tasks.findIndex((task) => task.id === id);
-  if (index === -1) return;
-  cancelNativeReminder(id);
-
-  const [task] = state.tasks.splice(index, 1);
-  state.trash.unshift({ ...task, deletedAt: Date.now() });
-  render();
-  if (openTrash) switchTab("trash");
-  await saveState();
-}
-
-function closePriorityPicker() {
-  const picker = document.querySelector(".priority-picker");
-  if (picker) picker.remove();
-  priorityPickerTaskId = null;
-}
-
-async function setTaskPriority(id, priority) {
-  const task = state.tasks.find((item) => item.id === id) || state.trash.find((item) => item.id === id);
-  if (!task || (priority !== null && !hasPriority(priority))) return;
-
-  task.priority = priority;
-  closePriorityPicker();
-  sortActiveTasks();
-  render();
-  await saveState();
-}
-
-function openPriorityPicker(task, anchor, showReminder = false) {
-  closePriorityPicker();
-  priorityPickerTaskId = task.id;
-
-  const picker = document.createElement("div");
-  picker.className = "priority-picker";
-  picker.setAttribute("role", "menu");
-
-  const closePickerButton = document.createElement("button");
-  closePickerButton.className = "picker-close-button";
-  closePickerButton.type = "button";
-  closePickerButton.setAttribute("aria-label", "Закрити меню");
-  closePickerButton.textContent = "×";
-  closePickerButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    closePriorityPicker();
+els.exerciseDayButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    toggleExerciseDay(button.dataset.exercise, button.dataset.exerciseDay);
   });
-  picker.append(closePickerButton);
+});
 
-  if (!showReminder) Object.entries(PRIORITIES).forEach(([priority, details]) => {
-    const button = document.createElement("button");
-    button.className = `priority-option ${details.className}`;
-    button.type = "button";
-    button.setAttribute("role", "menuitemradio");
-    button.setAttribute("aria-checked", String(task.priority === priority));
-    button.innerHTML = `<span class="priority-dot" aria-hidden="true"></span><span>${details.label}</span>`;
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      setTaskPriority(task.id, priority);
-    });
-    picker.append(button);
-  });
+els.form.addEventListener('submit', (event) => {
+  if (event.submitter?.value !== 'save') return;
+  const data = Object.fromEntries(new FormData(els.form));
+  const icon = iconForType(data.type, data.title);
+  const requestedPosition = Math.max(1, Number.parseInt(data.position, 10) || 1);
 
-  if (!showReminder) {
-    const clearPriorityButton = document.createElement("button");
-    clearPriorityButton.className = "priority-option priority-clear";
-    clearPriorityButton.type = "button";
-    clearPriorityButton.setAttribute("role", "menuitemradio");
-    clearPriorityButton.setAttribute("aria-checked", String(!task.priority));
-    clearPriorityButton.innerHTML = '<span class="priority-clear-icon" aria-hidden="true">—</span><span>Без пріоритету</span>';
-    clearPriorityButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      setTaskPriority(task.id, null);
-    });
-    picker.append(clearPriorityButton);
-  }
-
-  if (showReminder) {
-  const currentReminder = task.reminderAt ? new Date(task.reminderAt) : new Date(Date.now() + 3600000);
-  const pickerFields = document.createElement("div");
-  pickerFields.className = "reminder-picker-fields";
-  const makeSelect = (label, values, selected) => {
-    const wrapper = document.createElement("label");
-    wrapper.className = "reminder-field";
-    wrapper.innerHTML = `<span>${label}</span>`;
-    const select = document.createElement("select");
-    values.forEach(([value, text]) => {
-      const option = new Option(text, value, value === selected, value === selected);
-      select.append(option);
-    });
-    wrapper.append(select);
-    pickerFields.append(wrapper);
-    return select;
-  };
-  const days = Array.from({ length: 31 }, (_, index) => {
-    const value = String(index + 1).padStart(2, "0");
-    return [value, value];
-  });
-  const months = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"]
-    .map((text, index) => [String(index), text]);
-  const years = Array.from({ length: 7 }, (_, index) => {
-    const year = String(new Date().getFullYear() - 1 + index); return [year, year];
-  });
-  const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
-  const minutes = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
-  const daySelect = makeSelect("День", days, String(currentReminder.getDate()).padStart(2, "0"));
-  const monthSelect = makeSelect("Місяць", months, String(currentReminder.getMonth()));
-  const yearSelect = makeSelect("Рік", years, String(currentReminder.getFullYear()));
-  const hourSelect = makeSelect("Година", hours.map((value) => [value, value]), String(currentReminder.getHours()).padStart(2, "0"));
-  const minuteSelect = makeSelect("Хвилини", minutes.map((value) => [value, value]), String(Math.round(currentReminder.getMinutes() / 5) * 5 % 60).padStart(2, "0"));
-  const recurrenceSelect = makeSelect("Повторювати", [
-    ["none", "Не повторювати"],
-    ["daily", "Щодня"],
-    ["weekly-monday", "Щопонеділка"],
-    ["monthly-20", "Кожного 20 числа"],
-  ], task.recurrence || "none");
-  recurrenceSelect.closest(".reminder-field")?.classList.add("reminder-recurrence-field");
-
-  const reminderActions = document.createElement("div");
-  reminderActions.className = "reminder-picker-actions";
-  const saveReminderButton = document.createElement("button");
-  saveReminderButton.className = "priority-option reminder-action reminder-save-action";
-  saveReminderButton.type = "button";
-  saveReminderButton.textContent = "Зберегти дату";
-  saveReminderButton.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    const selectedDate = new Date(Number(yearSelect.value), Number(monthSelect.value), Number(daySelect.value), Number(hourSelect.value), Number(minuteSelect.value));
-    task.reminderAt = selectedDate.toISOString();
-    task.recurrence = recurrenceSelect.value === "none" ? null : recurrenceSelect.value;
-    cancelNativeReminder(task.id);
-    scheduleNativeReminder(task);
-    closePriorityPicker();
-    render();
-    await saveState();
-  });
-  const removeReminderButton = document.createElement("button");
-  removeReminderButton.className = "priority-option reminder-action reminder-remove-action";
-  removeReminderButton.type = "button";
-  removeReminderButton.textContent = "Прибрати нагадування";
-  removeReminderButton.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    task.reminderAt = null;
-    task.recurrence = null;
-    task.lastCompletedAt = null;
-    cancelNativeReminder(task.id);
-    closePriorityPicker();
-    render();
-    await saveState();
-  });
-  const deleteTaskButton = document.createElement("button");
-  deleteTaskButton.className = "priority-option reminder-action reminder-delete-action";
-  deleteTaskButton.type = "button";
-  deleteTaskButton.textContent = "Видалити таску";
-  deleteTaskButton.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    closePriorityPicker();
-    await deleteTaskPermanently(task.id);
-  });
-  reminderActions.append(saveReminderButton, removeReminderButton, deleteTaskButton);
-  picker.append(pickerFields, reminderActions);
-  }
-
-  document.body.append(picker);
-  const rect = anchor.getBoundingClientRect();
-  const viewport = window.visualViewport;
-  const viewportTop = viewport?.offsetTop || 0;
-  const viewportLeft = viewport?.offsetLeft || 0;
-  const viewportHeight = viewport?.height || window.innerHeight;
-  const viewportWidth = viewport?.width || window.innerWidth;
-  picker.style.maxHeight = `${Math.max(160, viewportHeight - 24)}px`;
-  const pickerRect = picker.getBoundingClientRect();
-  const left = Math.min(Math.max(viewportLeft + 12, rect.left), viewportLeft + viewportWidth - pickerRect.width - 12);
-  const top = Math.min(Math.max(viewportTop + 12, rect.bottom + 8), viewportTop + viewportHeight - pickerRect.height - 12);
-  picker.style.left = `${left}px`;
-  picker.style.top = `${top}px`;
-}
-
-async function deleteTaskPermanently(id) {
-  cancelNativeReminder(id);
-  state.tasks = state.tasks.filter((task) => task.id !== id);
-  state.trash = state.trash.filter((task) => task.id !== id);
-  render();
-  await saveState();
-}
-
-async function removeForever(id) {
-  await deleteTaskPermanently(id);
-}
-
-async function completeTask(id) {
-  const task = state.tasks.find((item) => item.id === id);
-  if (!task) return;
-
-  if (task.recurrence && !isRecurringTaskReadyToComplete(task)) return;
-  const nextReminderAt = getNextReminderAt(task);
-  if (nextReminderAt) {
-    if (isRecurringTaskCompletedToday(task)) return;
-    cancelNativeReminder(id);
-    task.reminderAt = nextReminderAt;
-    task.done = false;
-    task.lastCompletedAt = Date.now();
-    scheduleNativeReminder(task);
-    render();
-    await saveState();
-    return;
-  }
-
-  // A completed task without recurrence has no next occurrence, so remove it
-  // completely instead of leaving a completed row in the database.
-  cancelNativeReminder(id);
-  state.tasks = state.tasks.filter((item) => item.id !== id);
-  render();
-  await saveState();
-}
-
-function moveTaskToIndex(id, nextIndex) {
-  const currentIndex = state.tasks.findIndex((task) => task.id === id);
-  if (currentIndex === -1 || currentIndex === nextIndex) return false;
-
-  const [task] = state.tasks.splice(currentIndex, 1);
-  state.tasks.splice(nextIndex, 0, task);
-  return true;
-}
-
-function getTaskDragIndex(pointerY, draggingItem) {
-  const items = [...els.taskList.querySelectorAll(".task-item:not(.dragging)")];
-  return items.reduce((index, item) => {
-    const rect = item.getBoundingClientRect();
-    return pointerY > rect.top + rect.height / 2 ? index + 1 : index;
-  }, 0);
-}
-
-function syncDraggedTaskPosition(pointerY) {
-  if (!dragState?.active) return;
-
-  const nextIndex = getTaskDragIndex(pointerY, dragState.item);
-  if (!moveTaskToIndex(dragState.id, nextIndex)) return;
-
-  const siblings = [...els.taskList.querySelectorAll(".task-item:not(.dragging)")];
-  els.taskList.insertBefore(dragState.item, siblings[nextIndex] || null);
-  dragState.moved = true;
-}
-
-function startTaskDrag(item) {
-  if (!dragState || dragState.active) return;
-
-  dragState.active = true;
-  dragState.moved = false;
-  item.classList.remove("pressing");
-  item.classList.add("dragging");
-  document.body.classList.add("is-reordering");
-}
-
-function cancelPendingTaskDrag() {
-  if (!dragState || dragState.active) return;
-
-  clearTimeout(dragState.timer);
-  dragState.item.classList.remove("pressing");
-  dragState = null;
-}
-
-async function finishTaskDrag() {
-  if (!dragState) return;
-
-  clearTimeout(dragState.timer);
-  const { item, moved, active } = dragState;
-  item.classList.remove("pressing", "dragging", "swiping");
-  document.body.classList.remove("is-reordering");
-  dragState = null;
-
-  if (active && moved) {
-    sortActiveTasks();
-    render();
-    await saveState();
-  }
-}
-
-function setupTaskReorder(item, task, mode) {
-  if (mode !== "tasks") return;
-
-  item.dataset.taskId = task.id;
-  item.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("button")) return;
-
-    dragState = {
-      active: false,
-      id: task.id,
-      item,
-      moved: false,
-      menuOpened: false,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      timer: window.setTimeout(() => {
-        if (!dragState || dragState.item !== item || dragState.active) return;
-        dragState.menuOpened = true;
-        item.classList.remove("pressing");
-        openPriorityPicker(task, item, true);
-      }, 560),
+  if (editorMode === 'board') {
+    const boardItem = {
+      id: editingId || crypto.randomUUID(),
+      title: data.title,
+      type: 'board',
+      color: data.color || 'purple',
+      icon: iconForType('board', data.title),
     };
 
-    item.classList.add("pressing");
-    item.setPointerCapture(event.pointerId);
-  });
+    state.boardItems = upsertAtPosition(state.boardItems, boardItem, requestedPosition);
+  } else if (editingId) {
+    const nextItem = { ...state.items.find((item) => item.id === editingId), ...data, icon };
+    state.items = upsertAtPosition(
+      state.items,
+      nextItem,
+      requestedPosition,
+      (item) => item.type === data.type,
+    );
+  } else {
+    state.items = upsertAtPosition(
+      state.items,
+      { id: crypto.randomUUID(), title: data.title, type: data.type, color: data.color, icon },
+      requestedPosition,
+      (item) => item.type === data.type,
+    );
+    state.activeTab = data.type;
+    state.activeView = 'list';
+  }
 
-  item.addEventListener("pointermove", (event) => {
-    if (!dragState || dragState.item !== item || dragState.pointerId !== event.pointerId) return;
+  editingId = null;
+  saveState();
+  render();
+});
 
-    const deltaX = event.clientX - dragState.startX;
-    const moveX = Math.abs(deltaX);
-    const moveY = Math.abs(event.clientY - dragState.startY);
-    if (!dragState.active && (moveX > 8 || moveY > 8)) {
-      clearTimeout(dragState.timer);
-      item.classList.remove("pressing");
-      item.classList.toggle("swiping", moveX > 44 && moveY < 34);
-      return;
-    }
+els.delete.addEventListener('click', () => {
+  if (!editingId) return;
+  if (editorMode === 'board') {
+    state.boardItems = normalizeScopedOrder(state.boardItems.filter((item) => item.id !== editingId));
+    delete state.boardChecks[editingId];
+  } else {
+    const deletingItem = state.items.find((item) => item.id === editingId);
+    state.items = normalizeScopedOrder(
+      state.items.filter((item) => item.id !== editingId),
+      (item) => item.type === deletingItem?.type,
+    );
+  }
+  editingId = null;
+  editorMode = 'list';
+  els.dialog.close();
+  saveState();
+  render();
+});
 
-    if (!dragState.active) return;
-
-    event.preventDefault();
-    if (event.clientY < 90) window.scrollBy({ top: -12, behavior: "auto" });
-    if (event.clientY > window.innerHeight - 120) window.scrollBy({ top: 12, behavior: "auto" });
-    syncDraggedTaskPosition(event.clientY);
-  });
-
-  item.addEventListener("pointerup", (event) => {
-    if (!dragState || dragState.item !== item || dragState.pointerId !== event.pointerId) return;
-    const isHorizontalSwipe = Math.abs(event.clientX - dragState.startX) > 64 && Math.abs(event.clientY - dragState.startY) < 34;
-    if (isHorizontalSwipe && !dragState.active) {
-      clearTimeout(dragState.timer);
-      item.classList.remove("pressing", "swiping");
-      dragState = null;
-      openTaskTitleEditor(task);
-      return;
-    }
-    finishTaskDrag();
-  });
-
-  item.addEventListener("pointercancel", (event) => {
-    if (!dragState || dragState.item !== item || dragState.pointerId !== event.pointerId) return;
-    finishTaskDrag();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+      console.warn('Service worker registration failed', error);
+    });
   });
 }
 
-function makeTaskItem(task, mode) {
-  const item = document.createElement("li");
-  item.className = `task-item${task.done ? " done" : ""}`;
-  const completedToday = isRecurringTaskCompletedToday(task);
-  const notReadyYet = Boolean(task.recurrence && !completedToday && !isRecurringTaskReadyToComplete(task));
+window.addEventListener('focus', () => {
+  applyTimeBasedStateUpdates();
+  if (state.activeView === 'board') renderBoard();
+  if (state.activeView === 'exercises') renderExercises();
+  renderStats();
+});
 
-  const checkButton = document.createElement("button");
-  checkButton.className = `check-button${completedToday ? " completed-today" : ""}${notReadyYet ? " not-ready-yet" : ""}`;
-  checkButton.type = "button";
-  checkButton.textContent = task.done || completedToday ? "✓" : "";
-  checkButton.setAttribute("aria-label", completedToday ? "Виконано сьогодні" : notReadyYet ? `Доступно після ${formatDate(task.reminderAt)}` : task.done ? "Позначити активним" : "Позначити виконаним");
-  checkButton.setAttribute("aria-pressed", String(task.done || completedToday));
-  if (completedToday) checkButton.title = "Виконано сьогодні";
-  if (notReadyYet) checkButton.title = `Можна відмітити після ${formatDate(task.reminderAt)}`;
-  checkButton.disabled = mode === "trash";
-  checkButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (completedToday || notReadyYet) return;
-    completeTask(task.id);
-  });
-
-  const text = document.createElement("div");
-  text.className = "task-text";
-  const titleRow = document.createElement("div");
-  titleRow.className = "task-title-row";
-  const priority = hasPriority(task.priority) ? PRIORITIES[task.priority] : null;
-  const priorityDot = document.createElement("span");
-  priorityDot.className = `priority-dot task-priority-dot${priority ? ` ${priority.className}` : ""}`;
-  priorityDot.title = priority ? priority.label : "Без пріоритету";
-  priorityDot.setAttribute("aria-label", priority ? `Пріоритет: ${priority.label}` : "Без пріоритету");
-  const title = document.createElement("div");
-  title.className = "task-title";
-  title.textContent = task.title;
-  titleRow.append(priorityDot, title);
-  const meta = document.createElement("span");
-  meta.className = "task-meta";
-  if (task.reminderAt && mode !== "trash") {
-    meta.classList.add("task-reminder-meta");
-    meta.textContent = completedToday
-      ? `Виконано сьогодні · Наступне ${formatDate(task.reminderAt)}`
-      : `Нагадати ${formatDate(task.reminderAt)}`;
-  } else if (mode === "trash") {
-    meta.textContent = `Видалено ${formatDate(task.deletedAt)}`;
-  } else {
-    meta.hidden = true;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    applyTimeBasedStateUpdates();
+    if (state.activeView === 'board') renderBoard();
+    if (state.activeView === 'exercises') renderExercises();
+    renderStats();
   }
-  text.append(titleRow, meta);
+});
 
-  const actions = document.createElement("div");
-  actions.className = "item-actions";
-
-  if (mode === "trash") {
-    const deleteButton = document.createElement("button");
-    deleteButton.className = "mini-button danger";
-    deleteButton.type = "button";
-    deleteButton.textContent = "×";
-    deleteButton.title = "Видалити назавжди";
-    deleteButton.setAttribute("aria-label", "Видалити назавжди");
-    deleteButton.addEventListener("click", () => removeForever(task.id));
-    actions.append(deleteButton);
-  } else {
-    actions.append(checkButton);
-  }
-
-  if (mode === "trash") {
-    item.append(checkButton, text, actions);
-  } else {
-    item.append(text, actions);
-  }
-
-  item.addEventListener("click", (event) => {
-    if (event.target.closest("button") || dragState?.active) return;
-    if (event.detail === 3) {
-      event.preventDefault();
-      openPriorityPicker(task, item);
-    }
-  });
-
-  setupTaskReorder(item, task, mode);
-  return item;
-}
+setInterval(() => {
+  applyTimeBasedStateUpdates();
+  if (state.activeView === 'board') renderBoard();
+  if (state.activeView === 'exercises') renderExercises();
+  renderStats();
+}, 60_000);
 
 function render() {
-  sortActiveTasks();
-  const visibleTasks = getFilteredTasks();
-  const reminderTasks = state.tasks.filter((task) => task.reminderAt);
-  els.taskList.replaceChildren(...visibleTasks.map((task) => makeTaskItem(task, "tasks")));
-  els.trashList.replaceChildren(...reminderTasks.map((task) => makeTaskItem(task, "tasks")));
-  els.taskCount.textContent = visibleTasks.length;
-  els.trashCount.textContent = reminderTasks.length;
-  rescheduleNativeReminders();
+  els.tabButtons.forEach((button) => {
+    if (button.dataset.tab) {
+      button.classList.toggle('active', button.dataset.tab === state.activeTab);
+    }
+  });
+  els.statsTabButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.statsTab === state.statsTab);
+  });
+  els.navButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === state.activeView));
+
+  const isBoard = state.activeView === 'board';
+  const isList = state.activeView === 'list';
+  const isStatsLike = state.activeView === 'stats';
+  const isExercises = state.activeView === 'exercises';
+  els.boardView.hidden = !isBoard;
+  els.list.hidden = !isList;
+  if (els.listTabs) els.listTabs.hidden = !isList;
+  if (els.statsTabs) els.statsTabs.hidden = !isStatsLike;
+  if (els.readButton) {
+    els.readButton.hidden = true;
+    els.readButton.classList.toggle('is-complete', getReadMap(state.statsTab || 'goals')[dateKey(new Date())] === 'done');
+  }
+  if (els.statsReadButton) {
+    els.statsReadButton.hidden = !(isStatsLike && state.statsTab === 'goals');
+    els.statsReadButton.classList.toggle('is-complete', getReadMap(state.statsTab || 'goals')[dateKey(new Date())] === 'done');
+  }
+  if (els.statsAlcoholActions) {
+    els.statsAlcoholActions.hidden = !(isStatsLike && ['alcohol', 'nicotine', 'calories'].includes(state.statsTab));
+  }
+  els.statsView.hidden = !isStatsLike;
+  els.exercisesView.hidden = !isExercises;
+  els.settingsView.hidden = state.activeView !== 'settings';
+
+  if (isBoard) renderBoard();
+  if (isList) renderList();
+  renderExercises();
+  renderStats();
+  renderBoardShortcutStatuses();
 }
 
-window.openTaskFromNotification = (taskId, attempts = 0) => {
-  const task = state.tasks.find((item) => item.id === taskId);
-  if (!task) {
-    if (attempts < 20) window.setTimeout(() => window.openTaskFromNotification(taskId, attempts + 1), 250);
+function renderExercises() {
+  els.exerciseCards.forEach((card) => {
+    const buttons = [...card.querySelectorAll('[data-exercise-day]')];
+    const exerciseId = buttons[0]?.dataset.exercise;
+    const checkedCount = countExerciseDays(exerciseId);
+    card.classList.toggle('is-active-week', checkedCount > 0);
+    card.querySelector('small').textContent = `${checkedCount}/7`;
+  });
+
+  els.exerciseDayButtons.forEach((button) => {
+    const checked = Boolean(state.exerciseChecks?.[button.dataset.exercise]?.[button.dataset.exerciseDay]);
+    button.classList.toggle('is-done', checked);
+    button.setAttribute('aria-pressed', String(checked));
+  });
+}
+
+function renderBoardShortcutStatuses() {
+  const today = dateKey(new Date());
+  els.boardShortcuts.forEach((button) => {
+    const value = getReadMap(button.dataset.boardShortcut)?.[today];
+    const isMarked = Boolean(value && value !== 'reset');
+
+    button.classList.toggle('is-done-today', isMarked);
+    button.classList.toggle('is-missed-today', !isMarked);
+    button.setAttribute('aria-label', `${button.textContent.trim()}: ${isMarked ? 'сьогодні відмічено' : 'сьогодні не відмічено'}`);
+  });
+}
+
+function renderBoard() {
+  if (!els.boardBody || !els.boardHead) return;
+  const weekdays = [
+    { key: 'mon', label: 'Пн' },
+    { key: 'tue', label: 'Вт' },
+    { key: 'wed', label: 'Ср' },
+    { key: 'thu', label: 'Чт' },
+    { key: 'fri', label: 'Пт' },
+    { key: 'sat', label: 'Сб' },
+    { key: 'sun', label: 'Нд' },
+  ];
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const visibleWeekdays = [
+    { ...weekdays[(todayIndex + 6) % 7], isToday: false },
+    { ...weekdays[todayIndex], isToday: true },
+    { ...weekdays[(todayIndex + 1) % 7], isToday: false },
+  ];
+  const items = sortByOrder(state.boardItems);
+  const compactBoard = window.innerWidth <= 430;
+  const layout = compactBoard
+    ? { index: 42, task: 144, day: 36 }
+    : { index: 48, task: 204, day: 40 };
+  const boardColumns = `${layout.index}px minmax(${layout.task}px, 1fr) repeat(${visibleWeekdays.length}, ${layout.day}px)`;
+
+  els.boardView?.style.setProperty('--board-index-col', `${layout.index}px`);
+
+  els.boardHead.style.gridTemplateColumns = boardColumns;
+  els.boardHead.innerHTML = `
+    <span class="board-index">7/7</span>
+    <span class="board-title">Пункт</span>
+    ${visibleWeekdays.map((day) => `<span class="board-day ${day.isToday ? 'is-today-day' : ''}">${day.label}</span>`).join('')}
+  `;
+
+  if (!items.length) {
+    els.boardBody.innerHTML = `
+      <div class="board-row board-empty" style="grid-template-columns:${boardColumns}">
+        <span class="board-row-index board-progress">0/7</span>
+        <div class="board-task board-task-empty">
+          <strong>Борда поки пуста</strong>
+          <small>Натисни "Додати пункт", щоб створити перший таск.</small>
+        </div>
+        ${visibleWeekdays.map(() => '<span class="board-cell board-cell-empty"></span>').join('')}
+      </div>
+    `;
     return;
   }
 
-  const isReminderTask = Boolean(task.reminderAt);
-  const taskFilter = task.priority === "high"
-    ? "urgent"
-    : task.title.toLocaleLowerCase("uk-UA").includes("купит")
-      ? "buy"
-      : "all";
-  setTaskFilter(taskFilter);
-  switchTab(isReminderTask ? "trash" : "tasks");
-  const taskItem = (isReminderTask ? els.trashList : els.taskList)
-    .querySelector(`.task-item[data-task-id="${CSS.escape(taskId)}"]`);
-  if (!taskItem) return;
+  els.boardBody.innerHTML = items.map((item, index) => `
+    <div class="board-row" style="grid-template-columns:${boardColumns}">
+      <span class="board-row-index board-progress ${countBoardDays(item.id) === 7 ? 'is-complete' : ''}">${countBoardDays(item.id)}/7</span>
+      <button class="board-task" type="button" data-id="${item.id}">
+        <span class="board-task-copy">
+          <strong>${escapeHtml(item.title)}</strong>
+        </span>
+      </button>
+      ${visibleWeekdays.map((day) => {
+        const checked = Boolean(state.boardChecks[item.id]?.[day.key]);
+        return `<button class="board-cell ${checked ? 'is-done' : ''} ${day.isToday ? 'is-today-cell' : 'is-locked'}" type="button" data-board-key="${item.id}:${day.key}" ${day.isToday ? '' : 'disabled'} aria-label="${escapeHtml(item.title)} ${day.label}"></button>`;
+      }).join('')}
+    </div>
+  `).join('');
 
-  taskItem.scrollIntoView({ behavior: "smooth", block: "center" });
-  taskItem.classList.add("notification-target");
-  window.setTimeout(() => taskItem.classList.remove("notification-target"), 3000);
-};
-
-function setTaskFilter(filterName) {
-  activeTaskFilter = filterName;
-  els.taskFilterTabs.forEach((tab) => {
-    const isActive = tab.dataset.taskFilter === activeTaskFilter;
-    tab.classList.toggle("active", isActive);
-    tab.setAttribute("aria-selected", String(isActive));
-  });
-  render();
-}
-
-function setupTaskFilterSwipe() {
-  const filterOrder = ["all", "urgent", "buy"];
-  const swipeThreshold = 64;
-
-  const isBlankTasksArea = (event) => {
-    if (els.tasksPanel.hidden || event.pointerType !== "touch") return false;
-    if (event.target.closest("button, input, select, textarea, a, .task-item")) return false;
-
-    // The gesture is reserved for the unused space below the task card list.
-    return event.clientY >= els.tasksPanel.getBoundingClientRect().bottom;
-  };
-
-  els.appShell.addEventListener("pointerdown", (event) => {
-    if (!isBlankTasksArea(event)) return;
-    taskFilterSwipe = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-    };
+  els.boardBody.querySelectorAll('.board-task').forEach((button) => {
+    button.addEventListener('click', () => {
+      const item = state.boardItems.find((entry) => entry.id === button.dataset.id);
+      if (!item) return;
+      openBoardEditor(button.dataset.id);
+    });
   });
 
-  els.appShell.addEventListener("pointerup", (event) => {
-    if (!taskFilterSwipe || taskFilterSwipe.pointerId !== event.pointerId) return;
-
-    const deltaX = event.clientX - taskFilterSwipe.startX;
-    const deltaY = event.clientY - taskFilterSwipe.startY;
-    taskFilterSwipe = null;
-
-    if (Math.abs(deltaX) < swipeThreshold || Math.abs(deltaX) <= Math.abs(deltaY)) return;
-
-    const currentIndex = filterOrder.indexOf(activeTaskFilter);
-    const nextIndex = currentIndex + (deltaX < 0 ? 1 : -1);
-    if (nextIndex >= 0 && nextIndex < filterOrder.length) setTaskFilter(filterOrder[nextIndex]);
-  });
-
-  els.appShell.addEventListener("pointercancel", () => {
-    taskFilterSwipe = null;
-  });
-}
-
-function switchTab(tabName) {
-  const showTasks = tabName === "tasks";
-  els.tasksPanel.hidden = !showTasks;
-  els.trashPanel.hidden = showTasks;
-  els.tasksTab.classList.toggle("active", showTasks);
-  els.trashTab.classList.toggle("active", !showTasks);
-  els.tasksTab.setAttribute("aria-selected", String(showTasks));
-  els.trashTab.setAttribute("aria-selected", String(!showTasks));
-}
-
-function setupSpeechRecognition() {
-  if (!SpeechRecognition) {
-    els.voiceStatus.textContent = "Голосове введення недоступне в цьому браузері.";
-    els.micButton.disabled = true;
-    return;
-  }
-
-  recognition = new SpeechRecognition();
-  recognition.lang = "uk-UA";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.addEventListener("start", () => {
-    els.micButton.classList.add("listening");
-    els.navMicButton.classList.add("listening");
-    els.voiceStatus.textContent = "Слухаю...";
-  });
-
-  recognition.addEventListener("result", async (event) => {
-    const transcript = event.results[0][0].transcript.trim();
-
-    if (shouldAutoAddVoiceResult && transcript) {
-      shouldAutoAddVoiceResult = false;
-      setSyncStatus("Додаю голосову таску...", "neutral");
-      await addTaskFromTitle(transcript);
-      return;
-    }
-
-    els.taskInput.value = transcript;
-    els.voiceStatus.textContent = "Готово. Можна додати або відредагувати текст.";
-    els.taskInput.focus();
-  });
-
-  recognition.addEventListener("error", () => {
-    shouldAutoAddVoiceResult = false;
-    els.voiceStatus.textContent = "Не вдалося розпізнати голос. Спробуйте ще раз.";
-  });
-
-  recognition.addEventListener("end", () => {
-    els.micButton.classList.remove("listening");
-    els.navMicButton.classList.remove("listening");
-    if (els.voiceStatus.textContent === "Слухаю...") {
-      els.voiceStatus.textContent = "";
-    }
-  });
-}
-
-els.addButton?.addEventListener("click", openTaskModal);
-els.submitTaskButton.addEventListener("click", addTask);
-els.closeTaskModalButton.addEventListener("click", closeTaskModal);
-els.taskModal.addEventListener("click", (event) => {
-  if (event.target === els.taskModal) closeTaskModal();
-});
-els.taskInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") addTask();
-});
-
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !els.taskModal.hidden) closeTaskModal();
-  if (event.key === "Escape" && priorityPickerTaskId) closePriorityPicker();
-});
-
-document.addEventListener("click", (event) => {
-  if (!priorityPickerTaskId) return;
-  if (event.target.closest(".priority-picker") || event.target.closest(".task-item")) return;
-  closePriorityPicker();
-});
-
-els.tasksTab.addEventListener("click", () => switchTab("tasks"));
-els.trashTab.addEventListener("click", () => switchTab("trash"));
-els.taskFilterTabs.forEach((tab) => {
-  tab.addEventListener("click", () => setTaskFilter(tab.dataset.taskFilter));
-});
-setupTaskFilterSwipe();
-els.navMicButton.addEventListener("contextmenu", (event) => event.preventDefault());
-els.navMicButton.addEventListener("click", handleNavMicTap);
-
-els.micButton.addEventListener("click", () => startVoiceInput());
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-      console.warn("Service worker registration failed", error);
+  els.boardBody.querySelectorAll('[data-board-key]').forEach((button) => {
+    button.addEventListener('click', () => {
+      handleBoardCellTap(button.dataset.boardKey);
     });
   });
 }
 
-setupSpeechRecognition();
-setupNewReminderPicker();
-els.newReminderEnabled.addEventListener("change", updateNewReminderVisibility);
-updateNewReminderVisibility();
-render();
-setupAccessGate();
+function renderList() {
+  const items = sortByOrder(state.items.filter((item) => item.type === state.activeTab));
+  els.list.dataset.tab = state.activeTab;
+  els.list.innerHTML = items.map((item) => `
+    <button class="item-card" type="button" data-id="${item.id}">
+      <span class="item-icon ${item.color}">${icons[item.icon] || icons.target}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <span class="item-menu">${icons.dots}</span>
+    </button>
+  `).join('');
+
+  els.list.querySelectorAll('.item-card').forEach((card) => {
+    card.addEventListener('click', () => openEditor(card.dataset.id));
+  });
+}
+
+function renderStats() {
+  renderSleepCalendar(els.sleepCalendars[0], els.sleepMonths[0], els.sleepStreakNumbers[0]);
+}
+
+function showAuthScreen() {
+  els.appShell.hidden = true;
+  els.authScreen.hidden = false;
+}
+
+function showAppShell() {
+  els.authScreen.hidden = true;
+  els.appShell.hidden = false;
+}
+
+function openEditor(id) {
+  editorMode = 'list';
+  const item = state.items.find((entry) => entry.id === id);
+  const itemsInType = sortByOrder(state.items.filter((entry) => entry.type === (item?.type || state.activeTab)));
+  editingId = item?.id || null;
+  els.form.title.value = item?.title || '';
+  els.form.type.value = item?.type || state.activeTab;
+  els.form.color.value = item?.color || 'purple';
+  els.form.position.value = String(item ? Math.max(1, itemsInType.findIndex((entry) => entry.id === item.id) + 1) : itemsInType.length + 1);
+  els.form.type.closest('label').hidden = false;
+  document.querySelector('[data-color-row]')?.toggleAttribute('hidden', false);
+  els.delete.hidden = !item;
+  els.dialog.showModal();
+  els.form.title.focus();
+}
+
+function openBoardEditor(id) {
+  editorMode = 'board';
+  const item = state.boardItems.find((entry) => entry.id === id);
+  const boardItems = sortByOrder(state.boardItems);
+  editingId = item?.id || null;
+  els.form.title.value = item?.title || '';
+  els.form.type.value = 'board';
+  els.form.color.value = item?.color || 'purple';
+  els.form.position.value = String(item ? Math.max(1, boardItems.findIndex((entry) => entry.id === item.id) + 1) : boardItems.length + 1);
+  els.form.type.closest('label').hidden = true;
+  document.querySelector('[data-color-row]')?.setAttribute('hidden', '');
+  els.delete.hidden = !item;
+  els.dialog.showModal();
+  els.form.title.focus();
+}
+
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  saveState();
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', state.theme === 'light');
+  document.querySelector('.theme-toggle span').innerHTML = icons[state.theme === 'light' ? 'sun' : 'moon'];
+  els.themeSwitch.classList.toggle('is-on', state.theme === 'light');
+  els.themeSwitch.setAttribute('aria-pressed', String(state.theme === 'light'));
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', state.theme === 'light' ? '#f6f6f8' : '#11121b');
+}
+
+function applyCopy() {
+  document.documentElement.lang = 'uk';
+  document.title = t('appTitle');
+  document.querySelector('.app-shell').setAttribute('aria-label', t('appTitle'));
+  document.querySelector('h1').textContent = t('appTitle');
+  document.querySelectorAll('.tabs').forEach((node) => {
+    node.setAttribute('aria-label', t('tabsNav'));
+  });
+  document.querySelector('.bottom-nav').setAttribute('aria-label', t('mainNav'));
+  document.querySelectorAll('[data-tab="goals"]').forEach((node) => { node.textContent = t('goals'); });
+  document.querySelectorAll('[data-tab="rules"]').forEach((node) => { node.textContent = t('rules'); });
+  document.querySelectorAll('[data-stats-tab="goals"]').forEach((node) => { node.textContent = t('goals'); });
+  document.querySelectorAll('[data-stats-tab="alcohol"]').forEach((node) => { node.textContent = t('alcohol'); });
+  document.querySelectorAll('[data-stats-tab="nicotine"]').forEach((node) => { node.textContent = t('nicotine'); });
+  document.querySelectorAll('[data-stats-tab="calories"]').forEach((node) => { node.textContent = t('calories'); });
+  document.querySelector('[data-view="board"] small').textContent = t('board');
+  document.querySelector('[data-view="list"] small').textContent = t('list');
+  document.querySelector('[data-view="exercises"] small').textContent = t('exercises');
+  document.querySelector('[data-view="stats"] small').textContent = t('stats');
+  document.querySelector('[data-view="settings"] small').textContent = t('settings');
+  document.querySelector('[data-view="board"]').setAttribute('aria-label', t('board'));
+  document.querySelector('[data-view="list"]').setAttribute('aria-label', t('list'));
+  document.querySelector('[data-view="exercises"]').setAttribute('aria-label', t('exercises'));
+  document.querySelector('[data-view="stats"]').setAttribute('aria-label', t('stats'));
+  document.querySelector('[data-view="settings"]').setAttribute('aria-label', t('settings'));
+  document.querySelector('.add-button').setAttribute('aria-label', t('add'));
+  document.querySelector('.add-button').setAttribute('title', t('add'));
+  if (els.readButton) els.readButton.textContent = t('readDone');
+  if (els.statsReadButton) els.statsReadButton.textContent = t('readDone');
+  document.querySelector('.theme-toggle').setAttribute('aria-label', t('theme'));
+  document.querySelector('.header-logout').textContent = t('logout');
+  els.themeSwitch.setAttribute('aria-label', t('lightTheme'));
+  document.querySelector('.close-editor').setAttribute('aria-label', t('close'));
+  document.querySelector('.editor-card h2').textContent = t('item');
+  document.querySelectorAll('[data-i18n]').forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  els.sleepStreakTexts.forEach((node) => {
+    node.textContent = t('sleepPoints');
+  });
+  document.querySelector('.editor-card label > span')?.replaceChildren(document.createTextNode(t('title')));
+  document.querySelector('[data-order-label]')?.replaceChildren(document.createTextNode(t('position')));
+  document.querySelector('[data-section-label]')?.replaceChildren(document.createTextNode(t('section')));
+  document.querySelector('[data-color-label]')?.replaceChildren(document.createTextNode(t('color')));
+  const typeOptions = els.form.type.options;
+  typeOptions[0].textContent = t('goals');
+  typeOptions[1].textContent = t('rules');
+  [...els.form.color.options].forEach((option, index) => {
+    option.textContent = t('colors')[index];
+  });
+  els.delete.textContent = t('delete');
+  document.querySelector('.editor-card .primary-action').textContent = t('save');
+}
+
+function applyFontSize() {
+  const sizes = getNormalizedFontSizes(state.fontSizes);
+  document.documentElement.style.setProperty('--goals-font-size', `${sizes.goals}px`);
+  document.documentElement.style.setProperty('--rules-font-size', `${sizes.rules}px`);
+  document.documentElement.style.setProperty('--board-font-size', `${sizes.board}px`);
+  els.fontSizeButtons.forEach((button) => {
+    const scope = button.dataset.fontScope || 'goals';
+    button.classList.toggle('active', button.dataset.fontSize === String(sizes[scope]));
+  });
+}
+
+function finalizeReadStatuses() {
+  const today = dateKey(new Date());
+  let changed = false;
+  const start = new Date();
+  start.setFullYear(start.getFullYear(), start.getMonth(), 1);
+  const tabs = ['goals', 'alcohol', 'nicotine', 'calories'];
+
+  tabs.forEach((tab) => {
+    const map = getReadMap(tab);
+
+    for (let cursor = new Date(start); dateKey(cursor) < today; cursor = addDays(cursor, 1)) {
+      const key = dateKey(cursor);
+      if (!(key in map)) {
+        map[key] = 'missed';
+        changed = true;
+      }
+    }
+
+    if (isTodayReadDeadlinePassed() && !(today in map)) {
+      map[today] = 'missed';
+      changed = true;
+    }
+  });
+
+  if (changed) saveState();
+}
+
+function markTodayAsRead() {
+  const today = dateKey(new Date());
+  const map = getReadMap(state.statsTab || 'goals');
+  if (isTodayReadDeadlinePassed() || map[today] === 'done') return;
+  map[today] = 'done';
+  sleepTapState = { key: '', count: 0, ts: 0 };
+  saveState();
+  render();
+}
+
+function markTodayBinaryStatus(status) {
+  const today = dateKey(new Date());
+  const tab = ['alcohol', 'nicotine', 'calories'].includes(state.statsTab) ? state.statsTab : 'alcohol';
+  const map = getReadMap(tab);
+  if (isTodayReadDeadlinePassed() || !['done', 'missed'].includes(status)) return;
+  if (map[today] === 'done' || map[today] === 'missed') return;
+  map[today] = status;
+  sleepTapState = { key: '', count: 0, ts: 0 };
+  saveState();
+  render();
+}
+
+function renderSleepCalendar(calendarEl, monthEl, streakEl) {
+  if (!calendarEl || !monthEl || !streakEl) return;
+
+  finalizeReadStatuses();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const todayKey = dateKey(now);
+  const firstDay = new Date(year, month, 1);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = new Intl.DateTimeFormat('uk-UA', { month: 'long' }).format(now);
+  const headerTitle = document.querySelector('.stats-view .sleep-card header strong');
+  const headerSubtitle = document.querySelector('.stats-view .sleep-card header span');
+  const binaryPrimary = els.alcoholDrinkButton;
+  const binarySecondary = els.alcoholCleanButton;
+  const cells = [];
+
+  if (headerTitle && headerSubtitle) {
+    if ((state.statsTab || 'goals') === 'alcohol') {
+      headerTitle.textContent = 'Ти пив сьогодні?';
+      headerSubtitle.textContent = '';
+      headerTitle.classList.add('stats-question-title');
+      if (binaryPrimary) binaryPrimary.textContent = 'Пив';
+      if (binarySecondary) binarySecondary.textContent = 'Не пив';
+    } else if ((state.statsTab || 'goals') === 'nicotine') {
+      headerTitle.textContent = 'Ти курив сьогодні?';
+      headerSubtitle.textContent = '';
+      headerTitle.classList.add('stats-question-title');
+      if (binaryPrimary) binaryPrimary.textContent = 'Курив';
+      if (binarySecondary) binarySecondary.textContent = 'Не курив';
+    } else if ((state.statsTab || 'goals') === 'calories') {
+      headerTitle.textContent = 'Ти дотримався дефіцита?';
+      headerSubtitle.textContent = '';
+      headerTitle.classList.add('stats-question-title');
+      if (binaryPrimary) binaryPrimary.textContent = 'Профіцит';
+      if (binarySecondary) binarySecondary.textContent = 'Дефіцит';
+    } else if ((state.statsTab || 'goals') === 'goals') {
+      headerTitle.textContent = 'Ти прочитав Цілі?';
+      headerSubtitle.textContent = '';
+      headerTitle.classList.add('stats-question-title');
+    } else {
+      headerTitle.textContent = 'Перед сном';
+      headerSubtitle.textContent = 'Відкриття з 21:00 до 03:00';
+      headerTitle.classList.remove('stats-question-title');
+    }
+  }
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    cells.push('<span class="sleep-day empty"></span>');
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month, day);
+    const key = dateKey(date);
+    const statusValue = getReadMap(state.statsTab || 'goals')[key] || '';
+    const isDone = statusValue === 'done';
+    const isMissed = statusValue === 'missed';
+    const isToday = key === todayKey;
+    const status = isDone ? 'done' : isMissed ? 'missed' : '';
+    const label = isDone ? 'прочитано' : isMissed ? 'не прочитано' : 'сьогодні';
+    cells.push(`<button class="sleep-day stats-day ${status} ${isToday ? 'today' : ''}" type="button" data-sleep-date="${key}" title="${day}: ${label}">${day}</button>`);
+  }
+
+  monthEl.textContent = monthName;
+  calendarEl.innerHTML = cells.join('');
+  calendarEl.querySelectorAll('[data-sleep-date]').forEach((button) => {
+    button.addEventListener('click', () => {
+      handleSleepDateTap(button.dataset.sleepDate);
+    });
+  });
+  streakEl.textContent = countSleepStreak();
+}
+
+function handleSleepDateTap(key) {
+  const map = getReadMap(state.statsTab || 'goals');
+  const current = map[key];
+  if (!current || current === 'reset') return;
+
+  const now = Date.now();
+  const isSameKey = sleepTapState.key === key;
+  const isQuickTap = now - sleepTapState.ts < 1200;
+
+  if (isSameKey && isQuickTap) {
+    sleepTapState.count += 1;
+  } else {
+    sleepTapState = { key, count: 1, ts: now };
+    return;
+  }
+
+  sleepTapState.ts = now;
+
+  if (sleepTapState.count >= 3) {
+    map[key] = 'reset';
+    sleepTapState = { key: '', count: 0, ts: 0 };
+    saveState();
+    renderStats();
+  }
+}
+
+function handleBoardCellTap(key) {
+  maybeResetBoardCycle();
+  const [itemId, day] = key.split(':');
+  const checked = Boolean(state.boardChecks[itemId]?.[day]);
+
+  if (!checked) {
+    state.boardChecks[itemId] = { ...(state.boardChecks[itemId] || {}), [day]: true };
+    boardTapState = { key: '', count: 0, ts: 0 };
+    saveState();
+    renderBoard();
+    return;
+  }
+
+  const now = Date.now();
+  const isSameKey = boardTapState.key === key;
+  const isQuickTap = now - boardTapState.ts < 1200;
+
+  if (isSameKey && isQuickTap) {
+    boardTapState.count += 1;
+  } else {
+    boardTapState = { key, count: 1, ts: now };
+    return;
+  }
+
+  boardTapState.ts = now;
+
+  if (boardTapState.count >= 3) {
+    const next = { ...(state.boardChecks[itemId] || {}) };
+    delete next[day];
+    if (Object.keys(next).length) {
+      state.boardChecks[itemId] = next;
+    } else {
+      delete state.boardChecks[itemId];
+    }
+    boardTapState = { key: '', count: 0, ts: 0 };
+    saveState();
+    renderBoard();
+  }
+}
+
+function countBoardDays(itemId) {
+  return Object.values(state.boardChecks[itemId] || {}).filter(Boolean).length;
+}
+
+function toggleExerciseDay(exerciseId, day) {
+  if (!exerciseIds.includes(exerciseId) || !day) return;
+  maybeResetExerciseWeek();
+  const key = `${exerciseId}:${day}`;
+  const checked = Boolean(state.exerciseChecks?.[exerciseId]?.[day]);
+
+  if (!checked) {
+    state.exerciseChecks = {
+      ...(state.exerciseChecks || {}),
+      [exerciseId]: {
+        ...(state.exerciseChecks?.[exerciseId] || {}),
+        [day]: true,
+      },
+    };
+    exerciseTapState = { key: '', count: 0, ts: 0 };
+    saveState();
+    renderExercises();
+    return;
+  }
+
+  const now = Date.now();
+  const isSameKey = exerciseTapState.key === key;
+  const isQuickTap = now - exerciseTapState.ts < 1200;
+
+  if (isSameKey && isQuickTap) {
+    exerciseTapState.count += 1;
+  } else {
+    exerciseTapState = { key, count: 1, ts: now };
+    return;
+  }
+
+  exerciseTapState.ts = now;
+
+  if (exerciseTapState.count < 3) return;
+
+  const next = {
+    ...(state.exerciseChecks || {}),
+    [exerciseId]: {
+      ...(state.exerciseChecks?.[exerciseId] || {}),
+    },
+  };
+
+  delete next[exerciseId][day];
+  if (!Object.values(next[exerciseId]).some(Boolean)) {
+    delete next[exerciseId];
+  }
+
+  state.exerciseChecks = next;
+  exerciseTapState = { key: '', count: 0, ts: 0 };
+  saveState();
+  renderExercises();
+}
+
+function countExerciseDays(exerciseId) {
+  return Object.values(state.exerciseChecks?.[exerciseId] || {}).filter(Boolean).length;
+}
+
+function maybeResetExerciseWeek() {
+  const weekId = getMondayWeekId(new Date(), 'week');
+  if (!state.exerciseWeekId) {
+    state.exerciseWeekId = weekId;
+    return;
+  }
+
+  if (state.exerciseWeekId === weekId) return;
+
+  state.exerciseChecks = {};
+  state.exerciseWeekId = weekId;
+  exerciseTapState = { key: '', count: 0, ts: 0 };
+  saveState();
+}
+
+function getMondayWeekId(date, prefix) {
+  const current = new Date(date);
+  const day = (current.getDay() + 6) % 7;
+  current.setHours(0, 0, 0, 0);
+  current.setDate(current.getDate() - day);
+  return `${prefix}-${dateKey(current)}`;
+}
+
+function maybeResetBoardCycle() {
+  const cycleId = getBoardCycleId(new Date());
+  if (!state.boardCycleId) {
+    state.boardCycleId = cycleId;
+    return;
+  }
+
+  if (state.boardCycleId === cycleId) return;
+
+  state.boardChecks = {};
+  state.boardCycleId = cycleId;
+  saveState();
+}
+
+function getBoardCycleId(date) {
+  return getMondayWeekId(date, 'cycle');
+}
+
+function applyTimeBasedStateUpdates() {
+  maybeResetBoardCycle();
+  maybeResetExerciseWeek();
+  finalizeReadStatuses();
+}
+
+function countSleepStreak() {
+  const map = getReadMap(state.statsTab || 'goals');
+  let cursor = map[dateKey(new Date())] === 'done' ? new Date() : addDays(new Date(), -1);
+  let count = 0;
+
+  while (map[dateKey(cursor)] === 'done') {
+    count += 1;
+    cursor = addDays(cursor, -1);
+  }
+
+  return count;
+}
+
+function getReadMap(tab) {
+  if (!state.readStatuses || typeof state.readStatuses !== 'object') {
+    state.readStatuses = {};
+  }
+
+  const hasNestedTabs = ['goals', 'alcohol', 'nicotine', 'calories'].some((key) => {
+    const value = state.readStatuses[key];
+    return value && typeof value === 'object' && !Array.isArray(value);
+  });
+
+  if (!hasNestedTabs) {
+    const legacy = state.readStatuses || {};
+    state.readStatuses = {
+      goals: { ...legacy },
+      alcohol: {},
+      nicotine: {},
+      calories: {},
+    };
+  }
+
+  if (!state.readStatuses[tab] || typeof state.readStatuses[tab] !== 'object') {
+    state.readStatuses[tab] = {};
+  }
+
+  return state.readStatuses[tab];
+}
+
+function isTodayReadDeadlinePassed() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  return hours > 23 || (hours === 23 && minutes >= 59);
+}
+
+function persistLocalState() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // Storage can be unavailable in private or restricted browser modes.
+  }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(storageKey);
+    return normalizeState(saved ? JSON.parse(saved) : {});
+  } catch {
+    // Storage can be unavailable or contain an outdated/corrupt value.
+    return normalizeState();
+  }
+}
+
+function isStarterLocalState(value = {}) {
+  const items = Array.isArray(value.items) ? value.items : [];
+  const boardItems = Array.isArray(value.boardItems) ? value.boardItems : [];
+  if (boardItems.length) return false;
+
+  const starterTitles = defaults.map((item) => `${item.type}:${item.title}`).sort();
+  const savedTitles = items.map((item) => `${item.type}:${item.title}`).sort();
+  return starterTitles.length === savedTitles.length
+    && starterTitles.every((title, index) => title === savedTitles[index]);
+}
+
+function hasMeaningfulUserData(value = {}) {
+  if (!value || typeof value !== 'object') return false;
+  if (!isStarterLocalState(value)) return true;
+
+  const hasReadStatuses = Object.values(value.readStatuses || {}).some((entry) => (
+    entry && typeof entry === 'object'
+      ? Object.keys(entry).length > 0
+      : Boolean(entry)
+  ));
+  const hasBoardChecks = Object.values(value.boardChecks || {}).some((entry) => (
+    entry && typeof entry === 'object' && Object.keys(entry).length > 0
+  ));
+  const hasExerciseChecks = Object.values(value.exerciseChecks || {}).some((entry) => (
+    entry && typeof entry === 'object' && Object.keys(entry).length > 0
+  ));
+
+  return hasReadStatuses || hasBoardChecks || hasExerciseChecks;
+}
+
+function getNormalizedFontSizes(value = {}) {
+  const normalize = (size) => ['10', '12', '14'].includes(String(size)) ? String(size) : '12';
+  return {
+    goals: normalize(value.goals),
+    rules: normalize(value.rules),
+    board: normalize(value.board),
+  };
+}
+
+function sortByOrder(items) {
+  return [...items].sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
+}
+
+function upsertAtPosition(items, nextItem, requestedPosition, scopePredicate = null) {
+  const withoutCurrent = items.filter((item) => item.id !== nextItem.id);
+  const scoped = sortByOrder(withoutCurrent.filter((item) => (scopePredicate ? scopePredicate(item) : true)));
+  const unscoped = withoutCurrent.filter((item) => !(scopePredicate ? scopePredicate(item) : true));
+  const insertIndex = Math.min(Math.max(requestedPosition - 1, 0), scoped.length);
+  const reorderedScoped = [...scoped];
+  reorderedScoped.splice(insertIndex, 0, nextItem);
+  const normalizedScoped = reorderedScoped.map((item, index) => ({ ...item, order: index + 1 }));
+  return [...unscoped, ...normalizedScoped];
+}
+
+function normalizeScopedOrder(items, scopePredicate = null) {
+  const scoped = sortByOrder(items.filter((item) => (scopePredicate ? scopePredicate(item) : true)));
+  const unscoped = items.filter((item) => !(scopePredicate ? scopePredicate(item) : true));
+  return [...unscoped, ...scoped.map((item, index) => ({ ...item, order: index + 1 }))];
+}
+
+function saveState() {
+  state.updatedAt = new Date().toISOString();
+  persistLocalState();
+  scheduleCloudSync();
+}
+
+function iconForGoal(title) {
+  const text = title.toLowerCase();
+  if (text.includes('вага') || text.includes('спорт')) return 'dumbbell';
+  if (text.includes('солод') || text.includes('не ')) return 'ban';
+  return 'target';
+}
+
+function iconForRule(title) {
+  const text = title.toLowerCase();
+  if (text.includes('трен')) return 'shield';
+  if (text.includes('їсти') || text.includes('сміт')) return 'leaf';
+  if (text.includes('час')) return 'clock';
+  return 'calendar';
+}
+
+function iconForType(type, title) {
+  if (type === 'board') return 'calendar';
+  if (type === 'rules') return iconForRule(title);
+  return iconForGoal(title);
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[char]);
+}
+
+function t(key) {
+  return copy[key] ?? key;
+}
+
+function initSupabaseSync() {
+  const config = window.TRACKER_SUPABASE || {};
+  if (window.location.protocol === 'file:') {
+    showAuthScreen();
+    setSyncStatus(t('syncNeedHttp'));
+    if (els.authMessage) els.authMessage.textContent = t('syncNeedHttp');
+    updateAuthUi();
+    return;
+  }
+  if (!config.url || !config.anonKey || !window.supabase?.createClient) {
+    showAppShell();
+    setSyncStatus(t('syncLocal'));
+    updateAuthUi();
+    return;
+  }
+
+  supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+  setupAuth();
+}
+
+async function setupAuth() {
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    await handleSession(data.session);
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+  } catch (error) {
+    console.warn('Supabase auth init failed', error);
+    showAuthScreen();
+    setSyncStatus(humanizeSupabaseError(error));
+  }
+}
+
+async function handleSession(session) {
+  currentUser = session?.user || null;
+  updateAuthUi();
+
+  if (!currentUser) {
+    showAuthScreen();
+    setSyncStatus(t('syncNeedsLogin'));
+    return;
+  }
+
+  setSyncStatus(t('syncLoading'));
+  const hydrated = await hydrateFromCloud();
+  if (hydrated) {
+    showAppShell();
+  }
+}
+
+async function authLogin() {
+  if (!supabaseClient) {
+    setSyncStatus(t('syncLocal'));
+    return;
+  }
+
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+  if (els.authMessage) els.authMessage.textContent = '';
+
+  if (!email || !password) {
+    if (els.authMessage) els.authMessage.textContent = t('authNeedCredentials');
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    const message = `${t('authLoginError')}: ${error.message}`;
+    if (els.authMessage) els.authMessage.textContent = message;
+    setSyncStatus(humanizeSupabaseError(error));
+  }
+}
+
+async function hydrateFromCloud() {
+  const config = getSupabaseConfig();
+  if (!supabaseClient || !currentUser) return false;
+
+  try {
+    const [{ data: settings, error: settingsError }, { data: tasks, error: tasksError }] = await Promise.all([
+      supabaseClient.from(config.settingsTable).select('state, updated_at').eq('user_id', config.userId).maybeSingle(),
+      supabaseClient.from(config.tasksTable).select('*').eq('user_id', config.userId).order('section').order('position'),
+    ]);
+    if (settingsError || tasksError) throw settingsError || tasksError;
+
+    const remoteState = stateFromCloudRows(settings?.state, tasks);
+    lastRemoteUpdatedAt = settings?.state?.updatedAt || settings?.updated_at || null;
+
+    if (remoteState) {
+      // The current screen is a device-local UI preference.  Do not let a
+      // delayed cloud response interrupt the person while they navigate.
+      const activeView = state.activeView;
+      isHydratingRemote = true;
+      Object.assign(state, normalizeState(remoteState));
+      state.activeView = activeView;
+      persistLocalState();
+      isHydratingRemote = false;
+      applyTimeBasedStateUpdates();
+      applyTheme();
+      applyCopy();
+      applyFontSize();
+      render();
+    } else if (hasMeaningfulUserData(state)) {
+      await syncToCloud();
+    }
+
+    await restorePhoneBackupFromUrl();
+    setSyncStatus(t('syncReady'));
+    return true;
+  } catch (error) {
+    isHydratingRemote = false;
+    console.warn('Supabase sync failed', error);
+    setSyncStatus(humanizeSupabaseError(error));
+    showAuthScreen();
+    return false;
+  }
+}
+
+async function restorePhoneBackupFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('restore') !== 'phone') return;
+
+  const response = await fetch('restore-phone-state.json?v=41', { cache: 'no-store' });
+  if (!response.ok) throw new Error('Restore backup file is unavailable.');
+
+  const restored = normalizeState(await response.json());
+  restored.updatedAt = new Date().toISOString();
+  Object.assign(state, restored);
+  persistLocalState();
+  applyTimeBasedStateUpdates();
+  applyTheme();
+  applyCopy();
+  applyFontSize();
+  render();
+  await syncToCloud();
+  setSyncStatus(t('syncSaved'));
+}
+
+function scheduleCloudSync() {
+  if (!supabaseClient || !currentUser || isHydratingRemote) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToCloud, 600);
+}
+
+async function syncToCloud() {
+  const config = getSupabaseConfig();
+  if (!supabaseClient || !currentUser) return;
+
+  try {
+    const { data: remote, error: loadError } = await supabaseClient
+      .from(config.settingsTable)
+      .select('state, updated_at')
+      .eq('user_id', config.userId)
+      .maybeSingle();
+
+    if (loadError) throw loadError;
+
+    const remoteUpdatedAt = remote?.state?.updatedAt || remote?.updated_at || null;
+    if (
+      remoteUpdatedAt &&
+      lastRemoteUpdatedAt &&
+      new Date(remoteUpdatedAt).getTime() > new Date(lastRemoteUpdatedAt).getTime()
+    ) {
+      // A sync from another device must update the data, not force this
+      // device back to the board while the user is using another screen.
+      const activeView = state.activeView;
+      isHydratingRemote = true;
+      const { data: remoteTasks, error: tasksError } = await supabaseClient
+        .from(config.tasksTable)
+        .select('*')
+        .eq('user_id', config.userId)
+        .order('section')
+        .order('position');
+      if (tasksError) throw tasksError;
+      Object.assign(state, normalizeState(stateFromCloudRows(remote.state, remoteTasks)));
+      state.activeView = activeView;
+      lastRemoteUpdatedAt = remoteUpdatedAt;
+      persistLocalState();
+      isHydratingRemote = false;
+      applyTimeBasedStateUpdates();
+      applyTheme();
+      applyCopy();
+      applyFontSize();
+      render();
+      setSyncStatus(t('syncLoading'));
+      return;
+    }
+
+    if (!hasMeaningfulUserData(state) && !remote?.state) {
+      setSyncStatus(t('syncReady'));
+      return;
+    }
+
+    const nextUpdatedAt = new Date().toISOString();
+    state.updatedAt = nextUpdatedAt;
+    persistLocalState();
+
+    const tasks = taskRowsFromState(state, config.userId, nextUpdatedAt);
+    const taskIds = tasks.map((task) => task.id);
+    if (tasks.length) {
+      const { error: tasksUpsertError } = await supabaseClient.from(config.tasksTable).upsert(tasks, { onConflict: 'id' });
+      if (tasksUpsertError) throw tasksUpsertError;
+    }
+    const { data: savedRows, error: savedRowsError } = await supabaseClient
+      .from(config.tasksTable)
+      .select('id')
+      .eq('user_id', config.userId);
+    if (savedRowsError) throw savedRowsError;
+    const staleIds = (savedRows || []).map((row) => row.id).filter((id) => !taskIds.includes(id));
+    if (staleIds.length) {
+      const { error: removeError } = await supabaseClient
+        .from(config.tasksTable)
+        .delete()
+        .eq('user_id', config.userId)
+        .in('id', staleIds);
+      if (removeError) throw removeError;
+    }
+
+    const { items, boardItems, ...settingsState } = sanitizeStateForCloud(state);
+    const payload = {
+      user_id: config.userId,
+      state: settingsState,
+      updated_at: nextUpdatedAt,
+    };
+    const { error } = await supabaseClient.from(config.settingsTable).upsert(payload, { onConflict: 'user_id' });
+    if (error) throw error;
+    lastRemoteUpdatedAt = nextUpdatedAt;
+    setSyncStatus(t('syncSaved'));
+  } catch (error) {
+    isHydratingRemote = false;
+    console.warn('Supabase save failed', error);
+    setSyncStatus(humanizeSupabaseError(error));
+  }
+}
+
+function getSupabaseConfig() {
+  const config = window.TRACKER_SUPABASE || {};
+  return {
+    tasksTable: config.tasksTable || 'tracker',
+    settingsTable: config.settingsTable || 'tracker_settings',
+    userId: currentUser?.id,
+  };
+}
+
+function taskRowsFromState(value, userId, updatedAt) {
+  const boardDone = value.boardChecks || {};
+  return [...(value.items || []), ...(value.boardItems || [])].map((item, index) => ({
+    id: item.id,
+    user_id: userId,
+    value: item.title,
+    done: item.type === 'board' ? Boolean(boardDone[item.id]) : false,
+    section: item.type,
+    color: item.color || 'purple',
+    icon: item.icon || null,
+    position: Number.isInteger(item.order) ? item.order : index + 1,
+    updated_at: updatedAt,
+  }));
+}
+
+function stateFromCloudRows(settings, tasks) {
+  if (!settings && !tasks?.length) return null;
+  const remoteTasks = tasks || [];
+  // A legacy settings row can still contain its old item arrays until the
+  // one-time SQL migration has populated `tasks`.
+  if (!remoteTasks.length && Array.isArray(settings?.items)) return settings;
+  const boardChecks = { ...(settings?.boardChecks || {}) };
+  const items = remoteTasks
+    .filter((task) => task.section === 'goals' || task.section === 'rules')
+    .map((task) => ({ id: task.id, title: task.value, type: task.section, color: task.color, icon: task.icon, order: task.position }));
+  const boardItems = remoteTasks
+    .filter((task) => task.section === 'board')
+    .map((task) => {
+      // `task.done` is only a legacy aggregate flag. The per-day values live
+      // in settings.boardChecks; replacing them with this boolean loses them.
+      if (!boardChecks[task.id] && task.done) boardChecks[task.id] = {};
+      return { id: task.id, title: task.value, type: 'board', color: task.color, icon: task.icon, order: task.position };
+    });
+  return { ...(settings || {}), items, boardItems, boardChecks };
+}
+
+function updateAuthUi() {
+  if (!els.authForm) return;
+  els.authEmail.disabled = Boolean(currentUser);
+  els.authPassword.disabled = Boolean(currentUser);
+  els.authLogout.hidden = !currentUser;
+  if (currentUser?.email) {
+    els.authEmail.value = currentUser.email;
+    els.authPassword.value = '';
+    if (els.authMessage) els.authMessage.textContent = '';
+    setSyncStatus(t('syncLoggedIn'));
+  } else {
+    if (els.authMessage) els.authMessage.textContent = '';
+  }
+}
+
+function normalizeState(value = {}) {
+  const supportedItemTypes = new Set(['goals', 'rules']);
+  const normalizedItems = normalizeScopedOrder(
+    structuredClone(value.items || defaults)
+      .filter((item) => supportedItemTypes.has(item.type))
+      .map((item, index) => ({
+        ...item,
+        order: item.order ?? index + 1,
+      })),
+    (item) => item.type === 'goals',
+  );
+  const normalizedBoardItems = structuredClone(value.boardItems || []).map((item, index) => ({
+    ...item,
+    order: item.order ?? index + 1,
+  }));
+  const normalized = {
+    activeTab: 'goals',
+    statsTab: 'goals',
+    activeView: 'board',
+    theme: 'dark',
+    fontSizes: getNormalizedFontSizes(value.fontSizes || {
+      goals: value.fontSize,
+      rules: value.fontSize,
+      board: value.fontSize,
+    }),
+    bedtimeOpens: {},
+    readStatuses: value.readStatuses || value.bedtimeOpens || {},
+    boardChecks: {},
+    exerciseChecks: {},
+    exerciseWeekId: '',
+    boardCycleId: '',
+    ...value,
+    items: normalizedItems,
+    boardItems: normalizedBoardItems,
+  };
+  normalized.activeTab = supportedItemTypes.has(normalized.activeTab) ? normalized.activeTab : 'goals';
+  normalized.statsTab = ['goals', 'alcohol', 'nicotine', 'calories'].includes(normalized.statsTab) ? normalized.statsTab : 'goals';
+  normalized.activeView = ['board', 'list', 'exercises', 'stats', 'settings'].includes(normalized.activeView) ? normalized.activeView : 'board';
+  normalized.fontSizes = getNormalizedFontSizes(normalized.fontSizes);
+  normalized.boardChecks = normalizeBoardChecks(normalized.boardChecks);
+  normalized.exerciseChecks = normalizeExerciseChecks(normalized.exerciseChecks);
+  delete normalized.cryptoDays;
+  return normalized;
+}
+
+function normalizeBoardChecks(value = {}) {
+  const next = {};
+  Object.entries(value || {}).forEach(([itemId, checks]) => {
+    if (!checks || typeof checks !== 'object' || Array.isArray(checks)) return;
+    const activeDays = Object.fromEntries(
+      Object.entries(checks).filter(([, checked]) => Boolean(checked)),
+    );
+    if (Object.keys(activeDays).length) next[itemId] = activeDays;
+  });
+  return next;
+}
+
+function normalizeExerciseChecks(value = {}) {
+  const next = {};
+  exerciseIds.forEach((exerciseId) => {
+    const checks = value?.[exerciseId] || {};
+    const activeDays = Object.fromEntries(
+      Object.entries(checks).filter(([, checked]) => Boolean(checked)),
+    );
+    if (Object.keys(activeDays).length) {
+      next[exerciseId] = activeDays;
+    }
+  });
+  return next;
+}
+
+function sanitizeStateForCloud(value) {
+  return {
+    items: value.items,
+    boardItems: value.boardItems,
+    activeTab: value.activeTab,
+    statsTab: value.statsTab,
+    activeView: value.activeView,
+    theme: value.theme,
+    fontSizes: getNormalizedFontSizes(value.fontSizes || {
+      goals: value.fontSize,
+      rules: value.fontSize,
+      board: value.fontSize,
+    }),
+    bedtimeOpens: value.bedtimeOpens,
+    readStatuses: value.readStatuses,
+    boardChecks: value.boardChecks,
+    exerciseChecks: normalizeExerciseChecks(value.exerciseChecks),
+    exerciseWeekId: value.exerciseWeekId,
+    boardCycleId: value.boardCycleId,
+    updatedAt: value.updatedAt,
+  };
+}
+
+function setSyncStatus(text) {
+  if (els.syncStatus) els.syncStatus.textContent = text;
+}
+
+function humanizeSupabaseError(error) {
+  const message = String(error?.message || error?.error_description || error || '').toLowerCase();
+  if (message.includes('redirect') || message.includes('email_redirect_to')) return t('syncInvalidRedirect');
+  if (message.includes('email provider') || message.includes('otp') || message.includes('email not confirmed')) return t('syncEmailDisabled');
+  if (message.includes('invalid api key') || message.includes('bad request') || message.includes('fetch')) return t('syncBadRequest');
+  return t('syncError');
+}
+
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
