@@ -86,7 +86,6 @@ const copy = {
 
 const storageKey = 'goals-pwa-state';
 const exerciseIds = ['arms', 'shoulders', 'triceps'];
-clearLocalStateStorage();
 const state = loadState();
 state.activeView = 'board';
 
@@ -974,16 +973,22 @@ function isTodayReadDeadlinePassed() {
   return hours > 23 || (hours === 23 && minutes >= 59);
 }
 
-function clearLocalStateStorage() {
+function persistLocalState() {
   try {
-    localStorage.removeItem(storageKey);
+    localStorage.setItem(storageKey, JSON.stringify(state));
   } catch {
     // Storage can be unavailable in private or restricted browser modes.
   }
 }
 
 function loadState() {
-  return normalizeState();
+  try {
+    const saved = localStorage.getItem(storageKey);
+    return normalizeState(saved ? JSON.parse(saved) : {});
+  } catch {
+    // Storage can be unavailable or contain an outdated/corrupt value.
+    return normalizeState();
+  }
 }
 
 function isStarterLocalState(value = {}) {
@@ -1048,7 +1053,7 @@ function normalizeScopedOrder(items, scopePredicate = null) {
 
 function saveState() {
   state.updatedAt = new Date().toISOString();
-  clearLocalStateStorage();
+  persistLocalState();
   scheduleCloudSync();
 }
 
@@ -1180,7 +1185,7 @@ async function hydrateFromCloud() {
       isHydratingRemote = true;
       Object.assign(state, normalizeState(remoteState));
       state.activeView = 'board';
-      clearLocalStateStorage();
+      persistLocalState();
       isHydratingRemote = false;
       applyTimeBasedStateUpdates();
       applyTheme();
@@ -1213,7 +1218,7 @@ async function restorePhoneBackupFromUrl() {
   const restored = normalizeState(await response.json());
   restored.updatedAt = new Date().toISOString();
   Object.assign(state, restored);
-  clearLocalStateStorage();
+  persistLocalState();
   applyTimeBasedStateUpdates();
   applyTheme();
   applyCopy();
@@ -1259,7 +1264,7 @@ async function syncToCloud() {
       Object.assign(state, normalizeState(stateFromCloudRows(remote.state, remoteTasks)));
       state.activeView = 'board';
       lastRemoteUpdatedAt = remoteUpdatedAt;
-      clearLocalStateStorage();
+      persistLocalState();
       isHydratingRemote = false;
       applyTimeBasedStateUpdates();
       applyTheme();
@@ -1277,7 +1282,7 @@ async function syncToCloud() {
 
     const nextUpdatedAt = new Date().toISOString();
     state.updatedAt = nextUpdatedAt;
-    clearLocalStateStorage();
+    persistLocalState();
 
     const tasks = taskRowsFromState(state, config.userId, nextUpdatedAt);
     const taskIds = tasks.map((task) => task.id);
@@ -1354,8 +1359,9 @@ function stateFromCloudRows(settings, tasks) {
   const boardItems = remoteTasks
     .filter((task) => task.section === 'board')
     .map((task) => {
-      if (task.done) boardChecks[task.id] = true;
-      else delete boardChecks[task.id];
+      // `task.done` is only a legacy aggregate flag. The per-day values live
+      // in settings.boardChecks; replacing them with this boolean loses them.
+      if (!boardChecks[task.id] && task.done) boardChecks[task.id] = {};
       return { id: task.id, title: task.value, type: 'board', color: task.color, icon: task.icon, order: task.position };
     });
   return { ...(settings || {}), items, boardItems, boardChecks };
@@ -1415,9 +1421,22 @@ function normalizeState(value = {}) {
   normalized.statsTab = ['goals', 'alcohol', 'nicotine', 'calories'].includes(normalized.statsTab) ? normalized.statsTab : 'goals';
   normalized.activeView = ['board', 'list', 'exercises', 'stats', 'settings'].includes(normalized.activeView) ? normalized.activeView : 'board';
   normalized.fontSizes = getNormalizedFontSizes(normalized.fontSizes);
+  normalized.boardChecks = normalizeBoardChecks(normalized.boardChecks);
   normalized.exerciseChecks = normalizeExerciseChecks(normalized.exerciseChecks);
   delete normalized.cryptoDays;
   return normalized;
+}
+
+function normalizeBoardChecks(value = {}) {
+  const next = {};
+  Object.entries(value || {}).forEach(([itemId, checks]) => {
+    if (!checks || typeof checks !== 'object' || Array.isArray(checks)) return;
+    const activeDays = Object.fromEntries(
+      Object.entries(checks).filter(([, checked]) => Boolean(checked)),
+    );
+    if (Object.keys(activeDays).length) next[itemId] = activeDays;
+  });
+  return next;
 }
 
 function normalizeExerciseChecks(value = {}) {
